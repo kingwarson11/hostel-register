@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hostel Visitor Register</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-logo">
+        <i class="ti ti-building" aria-hidden="true"></i>
+        <span>Hostel Register</span>
+      </div>
+      <div class="live-badge"><span class="live-dot"></span> Live</div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="tab-bar" role="tablist">
+      <button class="tab active" role="tab" onclick="switchTab('visitor')">
+        <i class="ti ti-user-plus" aria-hidden="true"></i> Visitor Sign In/Out
+      </button>
+      <button class="tab" role="tab" onclick="switchTab('coordinator')">
+        <i class="ti ti-layout-dashboard" aria-hidden="true"></i> Coordinator
+      </button>
+    </div>
+
+    <!-- VISITOR VIEW -->
+    <section id="visitor-view" class="view active">
+      <h1 class="page-title">Hostel Visitor Register</h1>
+      <p class="page-sub">All visitors must sign in on arrival and sign out on departure.</p>
+
+      <button class="qr-banner" onclick="openModal()">
+        <i class="ti ti-qrcode qr-icon" aria-hidden="true"></i>
+        <div class="qr-text">
+          <strong>Scan QR code at the entrance</strong>
+          Point your phone camera at the code on the door
+        </div>
+        <i class="ti ti-chevron-right" aria-hidden="true"></i>
+      </button>
+
+      <div class="card">
+        <p class="section-label"><i class="ti ti-user" aria-hidden="true"></i> Visitor details</p>
+        <div class="field">
+          <label for="v-name">Visitor's full name</label>
+          <input id="v-name" type="text" placeholder="e.g. Daniel Amuah" autocomplete="name" />
+        </div>
+        <div class="field-grid">
+          <div class="field">
+            <label for="v-phone">Phone number</label>
+            <input id="v-phone" type="tel" placeholder="0XX XXX XXXX" />
+          </div>
+          <div class="field">
+            <label for="v-date">Date</label>
+            <input id="v-date" type="date" />
+          </div>
+        </div>
+
+        <hr class="divider" />
+
+        <p class="section-label"><i class="ti ti-home" aria-hidden="true"></i> Resident being visited</p>
+        <div class="field">
+          <label for="r-name">Resident's full name</label>
+          <input id="r-name" type="text" placeholder="e.g. Efua Asante" />
+        </div>
+        <div class="field-grid">
+          <div class="field">
+            <label for="r-room">Room number</label>
+            <input id="r-room" type="text" placeholder="e.g. A25" />
+          </div>
+          <div class="field">
+            <label for="r-phone">Resident's phone <span class="optional">(optional)</span></label>
+            <input id="r-phone" type="tel" placeholder="0XX XXX XXXX" />
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-in" onclick="doAction('in')">
+            <i class="ti ti-login" aria-hidden="true"></i> Sign In
+          </button>
+          <button class="btn btn-out" onclick="doAction('out')">
+            <i class="ti ti-logout" aria-hidden="true"></i> Sign Out
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- COORDINATOR VIEW -->
+    <section id="coordinator-view" class="view">
+      <div class="coord-header">
+        <h1 class="page-title">Coordinator Dashboard</h1>
+        <button class="export-btn" onclick="exportCSV()">
+          <i class="ti ti-download" aria-hidden="true"></i> Export CSV
+        </button>
+      </div>
+
+      <div id="sheet-banner" class="sheet-banner" style="display:none">
+        <i class="ti ti-table" aria-hidden="true"></i>
+        <span id="sheet-status">Connecting to Google Sheets…</span>
+        <a id="sheet-link" href="#" target="_blank" style="display:none">
+          <i class="ti ti-external-link" aria-hidden="true"></i> Open Sheet
+        </a>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat">
+          <div class="stat-num green" id="s-in">0</div>
+          <div class="stat-label">Inside now</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num red" id="s-out">0</div>
+          <div class="stat-label">Signed out</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="s-total">0</div>
+          <div class="stat-label">Total today</div>
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <button class="fpill active" onclick="setFilter('all',this)">All</button>
+        <button class="fpill" onclick="setFilter('in',this)">Still inside</button>
+        <button class="fpill" onclick="setFilter('out',this)">Signed out</button>
+      </div>
+
+      <div class="log-list" id="log-list">
+        <p class="empty">No entries yet. Visitors will appear here as they sign in.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- QR MODAL -->
+  <div class="modal-wrap" id="qr-modal" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h2 class="modal-title"><i class="ti ti-qrcode" aria-hidden="true"></i> Sign In / Out</h2>
+      <div class="field">
+        <label for="m-vname">Visitor's full name</label>
+        <input id="m-vname" type="text" placeholder="Your full name" autocomplete="name" />
+      </div>
+      <div class="field">
+        <label for="m-vphone">Your phone number</label>
+        <input id="m-vphone" type="tel" placeholder="0XX XXX XXXX" />
+      </div>
+      <div class="field">
+        <label for="m-rname">Resident you are visiting</label>
+        <input id="m-rname" type="text" placeholder="Resident's full name" />
+      </div>
+      <div class="field">
+        <label for="m-room">Room number</label>
+        <input id="m-room" type="text" placeholder="e.g. A25" />
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-in" onclick="modalAction('in')">
+          <i class="ti ti-login" aria-hidden="true"></i> Sign In
+        </button>
+        <button class="btn btn-out" onclick="modalAction('out')">
+          <i class="ti ti-logout" aria-hidden="true"></i> Sign Out
+        </button>
+      </div>
+      <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="config.js"></script>
+  <script src="sheets.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

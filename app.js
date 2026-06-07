@@ -141,19 +141,19 @@ function showSuccess(action, vName, rName, rRoom) {
   const msg    = document.getElementById("success-msg");
   const time   = document.getElementById("success-time");
 
-  title.textContent = action === "in" ? "✓ Signed in!" : "✓ Signed out!";
+  title.textContent = action === "in" ? "✅ Signed in! Info saved." : "✅ Signed out! Info saved.";
   msg.textContent   = action === "in"
-    ? `Welcome ${vName}. Visiting ${rName} in Room ${rRoom}.`
-    : `Goodbye ${vName}. Safe travels!`;
+    ? `Welcome ${vName}. Visiting ${rName} in Room ${rRoom}. Your details have been saved to the register.`
+    : `Goodbye ${vName}. Your sign-out has been recorded. Safe travels!`;
   time.textContent  = "Time: " + fmtTime(new Date());
 
   screen.classList.remove("hidden");
   screen.className = "success-screen " + (action === "in" ? "success-in" : "success-out");
   form.classList.add("hidden");
 
-  // Auto-hide after 6 seconds
+  // Auto-close after 4 seconds
   clearTimeout(screen._t);
-  screen._t = setTimeout(hideSuccess, 6000);
+  screen._t = setTimeout(hideSuccess, 4000);
 }
 
 function hideSuccess() {

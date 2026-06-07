@@ -7,7 +7,14 @@ function doPost(e) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet()
                     .getSheetByName("visitors");
-    const data = JSON.parse(e.postData.contents);
+
+    let data;
+    try {
+      data = JSON.parse(e.postData.contents);
+    } catch(err) {
+      // fallback: try reading from parameter
+      data = JSON.parse(e.parameter.data);
+    }
 
     if (data.action === "signout") {
       const rows = sheet.getDataRange().getValues();
@@ -26,7 +33,7 @@ function doPost(e) {
         data.id,
         data.date,
         data.visitor_name,
-        data.visitor_phone,
+        data.visitor_phone || "",
         data.resident_name,
         data.room,
         data.time_in,
@@ -49,6 +56,11 @@ function doPost(e) {
 }
 
 function doGet(e) {
+  // Used to read rows AND to receive data (CORS workaround)
+  if (e.parameter && e.parameter.data) {
+    return doPost({ postData: { contents: e.parameter.data }, parameter: e.parameter });
+  }
+
   const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("visitors");
   const rows    = sheet.getDataRange().getValues();
   const headers = rows[0];

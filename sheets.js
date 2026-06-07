@@ -1,25 +1,29 @@
-// sheets.js — Google Apps Script integration (CORS-safe via no-cors)
+// sheets.js — Google Apps Script integration
+// Uses GET + ?data= param to avoid CORS issues with POST
 
 const Sheets = (() => {
 
   function isConfigured() {
-    return typeof APPS_SCRIPT_URL === "string" && APPS_SCRIPT_URL.startsWith("https://");
+    return typeof APPS_SCRIPT_URL === "string" &&
+           APPS_SCRIPT_URL.startsWith("https://") &&
+           !APPS_SCRIPT_URL.includes("YOUR_APPS_SCRIPT");
   }
 
   async function init() {}
 
-  // Send data via no-cors (bypasses CORS block)
-  // Apps Script receives it fine, we just can't read the response — that's okay
+  // Send data via GET ?data=... (fully CORS-safe)
   async function sendData(payload) {
-    if (!isConfigured()) return false;
+    if (!isConfigured()) {
+      console.warn("Apps Script URL not configured in config.js");
+      return false;
+    }
     try {
-      await fetch(APPS_SCRIPT_URL, {
-        method: "POST",
-        mode: "no-cors",  // ← key fix: bypasses CORS restriction
-        body: JSON.stringify(payload),
-      });
-      return true; // no-cors always "succeeds" silently
-    } catch {
+      const encoded = encodeURIComponent(JSON.stringify(payload));
+      const url = APPS_SCRIPT_URL + "?data=" + encoded;
+      await fetch(url, { mode: "no-cors" });
+      return true;
+    } catch (err) {
+      console.error("sendData failed:", err);
       return false;
     }
   }
@@ -33,8 +37,6 @@ const Sheets = (() => {
       resident_name: entry.rName,
       room:          entry.rRoom,
       time_in:       entry.timeInStr,
-      time_out:      "",
-      status:        "in",
     });
   }
 
@@ -46,12 +48,13 @@ const Sheets = (() => {
     });
   }
 
-  // Reading uses a regular GET (Apps Script allows this)
   async function getRows() {
     if (!isConfigured()) return null;
     try {
       const res  = await fetch(APPS_SCRIPT_URL);
+      if (!res.ok) return null;
       const data = await res.json();
+      if (!Array.isArray(data)) return null;
       return data.map(r => ({
         id:         String(r.id),
         date:       r.date,
@@ -63,7 +66,8 @@ const Sheets = (() => {
         timeOutStr: r.time_out || "",
         status:     r.status,
       }));
-    } catch {
+    } catch (err) {
+      console.error("getRows failed:", err);
       return null;
     }
   }

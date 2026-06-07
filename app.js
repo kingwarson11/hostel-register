@@ -371,9 +371,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.title = HOSTEL_NAME;
   }
 
-  // Today's date on visitor form
-  const dateEl = document.getElementById("v-date");
-  if (dateEl) dateEl.value = new Date().toISOString().split("T")[0];
+  // Date is automatic (todayStr() used at sign-in time)
 
   // Connect to Google Sheets
   await Sheets.init();

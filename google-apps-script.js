@@ -1,6 +1,8 @@
 // ============================================================
 //  HOSTEL REGISTER — Google Apps Script
 //  Paste this into Extensions → Apps Script in your Google Sheet
+//  Then: Deploy → New deployment → Web app
+//        Execute as: Me | Who has access: Anyone
 // ============================================================
 
 function doPost(e) {
@@ -8,13 +10,9 @@ function doPost(e) {
     const sheet = SpreadsheetApp.getActiveSpreadsheet()
                     .getSheetByName("visitors");
 
-    let data;
-    try {
-      data = JSON.parse(e.postData.contents);
-    } catch(err) {
-      // fallback: try reading from parameter
-      data = JSON.parse(e.parameter.data);
-    }
+    // Read from form payload field
+    const raw  = e.parameter.payload || e.postData.contents;
+    const data = JSON.parse(raw);
 
     if (data.action === "signout") {
       const rows = sheet.getDataRange().getValues();
@@ -56,11 +54,6 @@ function doPost(e) {
 }
 
 function doGet(e) {
-  // Used to read rows AND to receive data (CORS workaround)
-  if (e.parameter && e.parameter.data) {
-    return doPost({ postData: { contents: e.parameter.data }, parameter: e.parameter });
-  }
-
   const sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("visitors");
   const rows    = sheet.getDataRange().getValues();
   const headers = rows[0];

@@ -1,110 +1,95 @@
-# 🏨 Hostel Visitor Register
+# Academic City Hostel Register
 
-A digital sign-in/sign-out system for hostel visitors — no paper, no hassle.
-
----
-
-## 🔗 Important Links
-
-| Role | Link |
-|------|------|
-| 👤 **Visitor Sign In/Out** | `https://your-site.vercel.app` |
-| 🛡️ **Coordinator Dashboard** | `https://your-site.vercel.app?coord` |
-
-> ⚠️ Replace `your-site` with your actual Vercel project name.
-> The coordinator dashboard is PIN protected.
+Sign-in/out system using ACity Google accounts. Data saves to Firebase (real-time) + Google Sheets (permanent record).
 
 ---
 
-## 📋 How It Works
+## How it works
 
-```
-Visitor scans QR code
-        ↓
-Fills in name, phone, resident & room
-        ↓
-Taps Sign In / Sign Out
-        ↓
-Row saved to Google Sheets instantly
-        ↓
-Coordinator sees it live on dashboard
-```
+- Students log in with **@acity.edu.gh** Google account
+- Their name auto-fills — they search for the resident they're visiting
+- Sign In / Sign Out → **goes straight to Firebase + Google Sheets**
+- Admins log in with their **@acity.edu.gh** email (listed in config.js) → see live dashboard with instant pop-up notifications
 
 ---
 
-## ⚙️ Setup Checklist
+## Setup (do this once)
 
-- [ ] Create Google Sheet with `visitors` tab and correct headers
-- [ ] Paste `google-apps-script.js` into Extensions → Apps Script
-- [ ] Deploy as Web App (Execute as: Me, Access: Anyone)
-- [ ] Copy Web App URL into `config.js`
-- [ ] Set your `HOSTEL_NAME` and `COORDINATOR_PIN` in `config.js`
-- [ ] Push to GitHub → Vercel auto-deploys
-- [ ] Create QR code on Canva pointing to your Vercel URL
-- [ ] Test sign-in → confirm row appears in Google Sheet
+### 1. Google Cloud — OAuth Client ID
+1. Go to [console.cloud.google.com](https://console.cloud.google.com)
+2. Create a new project (or use existing)
+3. **APIs & Services → OAuth consent screen**
+   - User type: External
+   - App name: Hostel Register
+   - Authorized domains: add your Vercel domain e.g. `hostel-register.vercel.app`
+4. **APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID**
+   - Application type: Web application
+   - Authorized JavaScript origins: `https://hostel-register.vercel.app`
+5. Copy the **Client ID** → paste into `config.js` as `GOOGLE_CLIENT_ID`
 
----
+### 2. Firebase
+1. Go to [console.firebase.google.com](https://console.firebase.google.com)
+2. Create a new project → disable Google Analytics (optional)
+3. **Build → Realtime Database → Create database**
+   - Start in **test mode** (you can add rules later)
+4. **Project Settings (gear icon) → Your apps → Web app (</>)**
+   - Register app, copy the `firebaseConfig` object
+   - Paste into `config.js` as `FIREBASE_CONFIG`
+5. **Add residents to Firebase:**
+   - In Realtime Database, add a `residents` node manually or use the seeding script below
+   ```json
+   {
+     "residents": {
+       "student1": { "name": "Efua Asante",  "email": "efua.asante@acity.edu.gh",  "room": "A25" },
+       "student2": { "name": "Kofi Mensah",  "email": "kofi.mensah@acity.edu.gh",  "room": "B14" }
+     }
+   }
+   ```
 
-## 📁 File Structure
+### 3. Google Sheets (permanent record)
+1. Create a Google Sheet named **Hostel Register**
+2. **Extensions → Apps Script** → delete default code → paste `google-apps-script.js`
+3. **Deploy → New deployment → Web app**
+   - Execute as: Me | Who has access: Anyone
+4. Copy the Web App URL + Sheet URL → paste into `config.js`
 
-```
-hostel-register/
-├── index.html              ← Visitor form + coordinator dashboard
-├── style.css               ← All styling
-├── app.js                  ← App logic
-├── sheets.js               ← Google Sheets sync
-├── config.js               ← ⚙️ Your settings (fill this in!)
-├── google-apps-script.js   ← Paste into Google Apps Script
-└── vercel.json             ← Vercel deployment config
-```
-
----
-
-## 🗂️ Google Sheet Headers
-
-The sheet tab must be named **`visitors`** with these exact headers in Row 1:
-
-| A | B | C | D | E | F | G | H | I |
-|---|---|---|---|---|---|---|---|---|
-| id | date | visitor_name | visitor_phone | resident_name | room | time_in | time_out | status |
-
-Status column is colour coded:
-- 🟢 **Green** = visitor is inside
-- 🔴 **Red** = visitor has signed out
-
----
-
-## 🛡️ Coordinator Dashboard
-
-Access the dashboard by adding `?coord` to your site URL:
-
-```
-https://your-site.vercel.app?coord
-```
-
-**Features:**
-- 🔒 PIN protected
-- 👁️ Live visitor list (refreshes every 30 seconds)
-- 📊 Stats — inside now / left today / total today
-- 🔍 Filter by status (all / inside / signed out)
-- ✍️ Sign out visitors directly from the dashboard
-- 📥 Export full log as CSV
-
----
-
-## 🖨️ QR Code (Canva)
-
-1. Go to [canva.com](https://canva.com) → New design → A4
-2. Apps → search **QR Code** → paste your Vercel URL
-3. Add text: **"Scan to sign in / out"**
-4. Download as **PDF Print** → print → laminate → place at entrance
-
----
-
-## 🔧 config.js Reference
-
+### 4. config.js — fill everything in
 ```js
-const APPS_SCRIPT_URL  = "https://script.google.com/macros/s/.../exec";
-const HOSTEL_NAME      = "Your Hostel Name";
-const COORDINATOR_PIN  = "1234";
+const GOOGLE_CLIENT_ID  = "XXXX.apps.googleusercontent.com";
+const FIREBASE_CONFIG   = { apiKey: "...", ... };
+const SHEET_WEBAPP_URL  = "https://script.google.com/macros/s/XXXX/exec";
+const SHEET_URL         = "https://docs.google.com/spreadsheets/d/XXXX/edit";
+const HOSTEL_NAME       = "Academic City Hostel";
+const ADMIN_EMAILS      = ["yourname@acity.edu.gh"];
+```
+
+### 5. Deploy on Vercel
+```bash
+vercel --prod
+```
+
+### 6. QR Code (Canva)
+1. Go to canva.com → New design → A5
+2. Elements → search "QR code"
+3. Paste your Vercel URL: `https://hostel-register.vercel.app`
+4. Add "Scan to sign in / out" → print → laminate → stick at entrance
+
+---
+
+## Every future update
+```bash
+git add . && git commit -m "update" && git push
+```
+Vercel redeploys automatically.
+
+---
+
+## Firebase Security Rules (add after testing)
+```json
+{
+  "rules": {
+    "residents": { ".read": "auth != null", ".write": false },
+    "entries":   { ".read": "auth != null", ".write": "auth != null" }
+  }
+}
 ```

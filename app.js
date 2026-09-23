@@ -1,159 +1,117 @@
-// app.js — Hostel Visitor Register
+// app.js — Main application logic
 
-// ── State ─────────────────────────────────────────────────────
-let logs          = [];
-let currentFilter = "all";
-let pollTimer     = null;
-let pinUnlocked   = false;
-let pinBuffer     = "";
-
-// ── Helpers ───────────────────────────────────────────────────
+// ── Shared helpers ────────────────────────────────────────────
 function fmtTime(d)     { return d ? new Date(d).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "—"; }
 function todayStr()     { return new Date().toLocaleDateString("en-GB"); }
-function initials(name) { return (name || "?").trim().split(" ").map(w => w[0]).join("").substring(0, 2).toUpperCase(); }
+function initials(name) { return (name||"?").trim().split(" ").map(w=>w[0]).join("").substring(0,2).toUpperCase(); }
 
 function showToast(msg, type) {
   const el = document.getElementById("toast");
   el.textContent = msg;
-  el.className = "toast " + type + " show";
+  el.className   = "toast " + type + " show";
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.remove("show"), 3500);
 }
 
-function setLoading(btnId, loading) {
-  const btn = document.getElementById(btnId);
+function setLoading(id, on) {
+  const btn = document.getElementById(id);
   if (!btn) return;
-  btn.disabled = loading;
-  if (loading) {
-    btn.dataset.orig = btn.innerHTML;
-    btn.innerHTML = `<span class="spinner"></span> Saving…`;
-  } else if (btn.dataset.orig) {
-    btn.innerHTML = btn.dataset.orig;
+  btn.disabled = on;
+  btn.dataset.orig = btn.dataset.orig || btn.innerHTML;
+  btn.innerHTML = on
+    ? `<span class="spinner"></span> Saving…`
+    : btn.dataset.orig;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  VISITOR FLOW
+// ══════════════════════════════════════════════════════════════
+
+function initVisitorForm() {
+  // Auto-fill visitor name from logged-in user
+  document.getElementById("visitor-first-name").textContent =
+    currentUser.given || currentUser.name.split(" ")[0];
+  document.getElementById("autofill-name").textContent  = currentUser.name;
+  document.getElementById("autofill-email").textContent = currentUser.email;
+
+  // Load residents for search
+  loadResidents();
+}
+
+async function doAction(action) {
+  if (!selectedResident) {
+    showToast("Please search and select the resident you are visiting", "toast-err");
+    return;
   }
-}
+  const phone = document.getElementById("v-phone").value.trim();
+  const now   = new Date();
 
-// ── PIN Lock ──────────────────────────────────────────────────
-function pinPress(digit) {
-  if (pinBuffer.length >= 4) return;
-  pinBuffer += digit;
-  updatePinDots();
-  if (pinBuffer.length === 4) {
-    setTimeout(checkPin, 150);
+  if (action === "out") {
+    // Find today's open sign-in for this visitor + resident
+    const entries = await fetchAllEntries();
+    const open    = entries.find(e =>
+      e.visitorEmail === currentUser.email &&
+      e.residentEmail === selectedResident.email &&
+      e.status === "in" &&
+      e.date === todayStr()
+    );
+    if (!open) {
+      showToast("No open sign-in found for this visit", "toast-err");
+      return;
+    }
+    open.status     = "out";
+    open.timeOut    = now.toISOString();
+    open.timeOutStr = fmtTime(now);
+    setLoading("btn-sign-out", true);
+    await updateSignOut(open);
+    setLoading("btn-sign-out", false);
+    showSuccess("out", currentUser.name, selectedResident.name, selectedResident.room);
+    clearResident();
+    return;
   }
-}
 
-function pinDel() {
-  pinBuffer = pinBuffer.slice(0, -1);
-  updatePinDots();
-  document.getElementById("pin-error").classList.add("hidden");
-}
+  // Sign in
+  const entry = {
+    id:            Date.now().toString(),
+    date:          todayStr(),
+    visitorName:   currentUser.name,
+    visitorEmail:  currentUser.email,
+    visitorPhone:  phone,
+    residentName:  selectedResident.name,
+    residentEmail: selectedResident.email,
+    room:          selectedResident.room,
+    timeIn:        now.toISOString(),
+    timeInStr:     fmtTime(now),
+    timeOut:       null,
+    timeOutStr:    "",
+    status:        "in",
+  };
 
-function updatePinDots() {
-  const dots = document.querySelectorAll("#pin-dots span");
-  dots.forEach((d, i) => {
-    d.classList.toggle("filled", i < pinBuffer.length);
-  });
-}
-
-function checkPin() {
-  const correct = typeof COORDINATOR_PIN !== "undefined" ? String(COORDINATOR_PIN) : "1234";
-  if (pinBuffer === correct) {
-    pinUnlocked = true;
-    document.getElementById("pin-screen").classList.add("hidden");
-    document.getElementById("dashboard").classList.remove("hidden");
-    // Set date label
-    const coordDate = document.getElementById("coord-date");
-    if (coordDate) coordDate.textContent = new Date().toLocaleDateString("en-GB", {
-      weekday: "long", day: "numeric", month: "long", year: "numeric"
-    });
-    fetchFromSheet();
-    startPolling();
-  } else {
-    document.getElementById("pin-error").classList.remove("hidden");
-    document.querySelectorAll("#pin-dots span").forEach(d => d.classList.add("shake"));
-    setTimeout(() => {
-      pinBuffer = "";
-      updatePinDots();
-      document.querySelectorAll("#pin-dots span").forEach(d => d.classList.remove("shake"));
-    }, 600);
-  }
-}
-
-
-
-// ── Coordinator access via URL (?coord or #coord) ─────────────
-function checkCoordURL() {
-  const url    = window.location.href;
-  const isCoord = url.includes("?coord") || url.includes("#coord");
-  if (isCoord) {
-    document.getElementById("coordinator-overlay").classList.remove("hidden");
-    document.getElementById("visitor-view").classList.add("hidden");
-    document.querySelector(".site-header").classList.add("hidden");
-  }
-}
-
-function lockDashboard() {
-  pinUnlocked = false;
-  pinBuffer   = "";
-  updatePinDots();
-  stopPolling();
-  document.getElementById("pin-screen").classList.remove("hidden");
-  document.getElementById("dashboard").classList.add("hidden");
-  document.getElementById("pin-error").classList.add("hidden");
-}
-
-// ── Polling ───────────────────────────────────────────────────
-function startPolling() {
-  stopPolling();
-  pollTimer = setInterval(fetchFromSheet, 30000);
-}
-function stopPolling() {
-  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-}
-
-// ── Fetch all rows from Google Sheet ─────────────────────────
-async function fetchFromSheet() {
-  if (!Sheets.isConfigured()) return;
-  try {
-    const data = await Sheets.getRows();
-    if (!data) return;
-    logs = data;
-    updateStats();
-    renderLogs();
-    flashRefresh();
-  } catch (e) {
-    console.warn("Fetch failed:", e);
-  }
-}
-
-function flashRefresh() {
-  const badge = document.getElementById("refresh-badge");
-  if (!badge) return;
-  badge.classList.add("flash");
-  setTimeout(() => badge.classList.remove("flash"), 2000);
+  setLoading("btn-sign-in", true);
+  await writeEntry(entry);
+  setLoading("btn-sign-in", false);
+  showSuccess("in", currentUser.name, selectedResident.name, selectedResident.room);
+  clearResident();
+  document.getElementById("v-phone").value = "";
 }
 
 // ── Success screen ────────────────────────────────────────────
-function showSuccess(action, vName, rName, rRoom) {
+function showSuccess(action, vName, rName, room) {
   const screen = document.getElementById("success-screen");
   const form   = document.getElementById("visitor-form");
-  const title  = document.getElementById("success-title");
-  const msg    = document.getElementById("success-msg");
-  const time   = document.getElementById("success-time");
+  document.getElementById("success-title").textContent =
+    action === "in" ? "✓ Signed in!" : "✓ Signed out!";
+  document.getElementById("success-msg").textContent =
+    action === "in"
+      ? `Welcome ${vName.split(" ")[0]}! Visiting ${rName} in Room ${room}.`
+      : `Goodbye ${vName.split(" ")[0]}! Safe travels.`;
+  document.getElementById("success-time").textContent = "Time: " + fmtTime(new Date());
 
-  title.textContent = action === "in" ? "✅ Signed in! Info saved." : "✅ Signed out! Info saved.";
-  msg.textContent   = action === "in"
-    ? `Welcome ${vName}. Visiting ${rName} in Room ${rRoom}. Your details have been saved to the register.`
-    : `Goodbye ${vName}. Your sign-out has been recorded. Safe travels!`;
-  time.textContent  = "Time: " + fmtTime(new Date());
-
-  screen.classList.remove("hidden");
   screen.className = "success-screen " + (action === "in" ? "success-in" : "success-out");
+  screen.classList.remove("hidden");
   form.classList.add("hidden");
-
-  // Auto-close after 4 seconds
   clearTimeout(screen._t);
-  screen._t = setTimeout(hideSuccess, 4000);
+  screen._t = setTimeout(hideSuccess, 6000);
 }
 
 function hideSuccess() {
@@ -161,116 +119,113 @@ function hideSuccess() {
   document.getElementById("visitor-form").classList.remove("hidden");
 }
 
-// ── Core: add entry ───────────────────────────────────────────
-async function addEntry(vName, vPhone, rName, rRoom, action) {
-  const now     = new Date();
-  const today   = todayStr();
-  const timeStr = fmtTime(now);
+// ══════════════════════════════════════════════════════════════
+//  ADMIN DASHBOARD
+// ══════════════════════════════════════════════════════════════
 
-  if (action === "out") {
-    const existing = logs.find(
-      l => l.vName === vName && l.rRoom === rRoom && l.status === "in" && l.date === today
-    );
-    if (!existing) {
-      showToast("No open sign-in found for " + vName + " · Room " + rRoom, "toast-err");
-      return false;
-    }
-    existing.status     = "out";
-    existing.timeOut    = now.toISOString();
-    existing.timeOutStr = timeStr;
+let allEntries    = [];
+let currentFilter = "all";
+let pollTimer     = null;
+let notifQueue    = [];
+let notifShowing  = false;
 
-    Sheets.updateSignOut(existing); // fire and forget
-    updateStats();
-    renderLogs();
-    return true;
+function initAdminDashboard() {
+  document.getElementById("coord-date").textContent =
+    new Date().toLocaleDateString("en-GB", {
+      weekday: "long", day: "numeric", month: "long", year: "numeric"
+    });
+
+  if (typeof SHEET_URL === "string" && SHEET_URL.startsWith("https://")) {
+    const link = document.getElementById("sheet-link");
+    link.href  = SHEET_URL;
+    link.classList.remove("hidden");
   }
 
-  // Sign in
-  const entry = {
-    id:         Date.now().toString(),
-    date:       today,
-    vName,
-    vPhone:     vPhone || "",
-    rName,
-    rRoom,
-    timeIn:     now.toISOString(),
-    timeInStr:  timeStr,
-    timeOut:    null,
-    timeOutStr: "",
-    status:     "in",
-  };
+  // Live listener — updates table in real time
+  listenForEntries(entries => {
+    const isFirst = allEntries.length === 0;
+    allEntries = entries;
+    updateStats();
+    renderLogs();
+    flashRefresh();
+    if (!isFirst) lastKnownCount = entries.length;
+    else          lastKnownCount = entries.length; // mark initial load done
+  });
 
-  Sheets.appendRow(entry); // fire and forget
-  logs.unshift(entry);
-  updateStats();
-  renderLogs();
-  return true;
+  // Notification listener — fires on new/changed entries
+  setTimeout(() => {
+    listenForNewEntries((entry, type) => {
+      queueNotif(entry, type);
+    });
+  }, 2000); // small delay so initial load doesn't trigger notifications
 }
 
+async function fetchEntries() {
+  allEntries = await fetchAllEntries();
+  updateStats();
+  renderLogs();
+  flashRefresh();
 }
 
 // ── Stats ─────────────────────────────────────────────────────
 function updateStats() {
-  const today  = todayStr();
-  const todayL = logs.filter(l => l.date === today);
-  document.getElementById("s-in").textContent    = todayL.filter(l => l.status === "in").length;
-  document.getElementById("s-out").textContent   = todayL.filter(l => l.status === "out").length;
-  document.getElementById("s-total").textContent = todayL.length;
+  document.getElementById("s-in").textContent    = allEntries.filter(e => e.status === "in").length;
+  document.getElementById("s-out").textContent   = allEntries.filter(e => e.status === "out").length;
+  document.getElementById("s-total").textContent = allEntries.length;
 }
 
 // ── Log rendering ─────────────────────────────────────────────
 function renderLogs() {
-  const el     = document.getElementById("log-list");
-  const today  = todayStr();
-  const source = logs.filter(l => l.date === today);
-  const list   = currentFilter === "all"
-    ? source
-    : source.filter(l => l.status === currentFilter);
+  const el   = document.getElementById("log-list");
+  const list = currentFilter === "all"
+    ? allEntries
+    : allEntries.filter(e => e.status === currentFilter);
 
   if (!list.length) {
     el.innerHTML = `
       <div class="empty-state">
-        <i class="ti ti-clipboard-list" aria-hidden="true"></i>
+        <i class="ti ti-clipboard-list"></i>
         <p>${currentFilter === "all" ? "No entries today" : "No entries for this filter"}</p>
-        <span>Visitors appear here as they sign in</span>
+        <span>Sign-ins appear here in real time</span>
       </div>`;
     return;
   }
 
-  el.innerHTML = list.map(l => `
+  el.innerHTML = list.map(e => `
     <div class="log-item">
-      <div class="log-avatar ${l.status === "in" ? "av-in" : "av-out"}">${initials(l.vName)}</div>
+      <div class="log-avatar ${e.status === "in" ? "av-in" : "av-out"}">${initials(e.visitorName)}</div>
       <div class="log-body">
-        <div class="log-name">${l.vName}</div>
-        <div class="log-meta">Visiting <strong>${l.rName}</strong> · Room <strong>${l.rRoom}</strong></div>
-        ${l.vPhone ? `<div class="log-phone"><i class="ti ti-phone" aria-hidden="true"></i> ${l.vPhone}</div>` : ""}
+        <div class="log-name">${e.visitorName}</div>
+        <div class="log-meta">
+          Visiting <strong>${e.residentName}</strong> · Room <strong>${e.room}</strong>
+        </div>
+        <div class="log-email"><i class="ti ti-mail"></i> ${e.visitorEmail}</div>
+        ${e.visitorPhone ? `<div class="log-phone"><i class="ti ti-phone"></i> ${e.visitorPhone}</div>` : ""}
       </div>
       <div class="log-right">
-        <div class="log-time">In: ${l.timeInStr || fmtTime(l.timeIn)}</div>
-        ${l.timeOutStr || l.timeOut ? `<div class="log-time">Out: ${l.timeOutStr || fmtTime(l.timeOut)}</div>` : ""}
-        <span class="pill ${l.status === "in" ? "pill-in" : "pill-out"}">
-          ${l.status === "in" ? "Inside" : "Left"}
+        <div class="log-time">In: ${e.timeInStr || fmtTime(e.timeIn)}</div>
+        ${e.timeOutStr ? `<div class="log-time">Out: ${e.timeOutStr}</div>` : ""}
+        <span class="pill ${e.status === "in" ? "pill-in" : "pill-out"}">
+          ${e.status === "in" ? "Inside" : "Left"}
         </span>
-        ${l.status === "in"
-          ? `<button class="signout-btn" onclick="quickOut('${l.id}')">Sign out</button>`
+        ${e.status === "in"
+          ? `<button class="signout-btn" onclick="adminSignOut('${e.id}')">Sign out</button>`
           : ""}
       </div>
     </div>
   `).join("");
 }
 
-// ── Quick sign-out from dashboard ────────────────────────────
-async function quickOut(id) {
-  const l = logs.find(e => String(e.id) === String(id));
-  if (!l) return;
-  const now    = new Date();
-  l.status     = "out";
-  l.timeOut    = now.toISOString();
-  l.timeOutStr = fmtTime(now);
-  updateStats();
+async function adminSignOut(id) {
+  const e = allEntries.find(x => x.id === id);
+  if (!e) return;
+  const now   = new Date();
+  e.status     = "out";
+  e.timeOut    = now.toISOString();
+  e.timeOutStr = fmtTime(now);
   renderLogs();
-  Sheets.updateSignOut(l); // fire and forget
-  showToast("✓ Signed out: " + l.vName, "toast-out");
+  await updateSignOut(e);
+  showToast("✓ Signed out: " + e.visitorName, "toast-out");
 }
 
 // ── Filter ────────────────────────────────────────────────────
@@ -281,98 +236,82 @@ function setFilter(f, el) {
   renderLogs();
 }
 
-// ── Visitor form ──────────────────────────────────────────────
-async function doAction(action) {
-  const vName  = document.getElementById("v-name").value.trim();
-  const vPhone = document.getElementById("v-phone").value.trim();
-  const rName  = document.getElementById("r-name").value.trim();
-  const rRoom  = document.getElementById("r-room").value.trim();
-
-  if (!vName || !rName || !rRoom) {
-    showToast("Please fill in visitor name, resident name & room", "toast-err");
-    return;
-  }
-
-  const btnId = action === "in" ? "btn-sign-in" : "btn-sign-out";
-  setLoading(btnId, true);
-  const ok = await addEntry(vName, vPhone, rName, rRoom, action);
-  setLoading(btnId, false);
-
-  if (ok) {
-    ["v-name","v-phone","r-name","r-room"].forEach(id =>
-      document.getElementById(id).value = ""
-    );
-    showSuccess(action, vName, rName, rRoom);
-  }
+// ── Refresh badge ─────────────────────────────────────────────
+function flashRefresh() {
+  const b = document.getElementById("refresh-badge");
+  if (!b) return;
+  b.classList.add("flash");
+  setTimeout(() => b.classList.remove("flash"), 2000);
 }
 
-// ── QR Modal ──────────────────────────────────────────────────
-function openModal() {
-  document.getElementById("qr-modal").classList.add("show");
-  setTimeout(() => document.getElementById("m-vname").focus(), 300);
+// ── Pop-up notifications for admin ────────────────────────────
+function queueNotif(entry, type) {
+  notifQueue.push({ entry, type });
+  if (!notifShowing) showNextNotif();
 }
-function closeModal() {
-  document.getElementById("qr-modal").classList.remove("show");
-  ["m-vname","m-vphone","m-rname","m-room"].forEach(id =>
-    document.getElementById(id).value = ""
-  );
-}
-function backdropClose(e) {
-  if (e.target === e.currentTarget) closeModal();
-}
-async function modalAction(action) {
-  const vName  = document.getElementById("m-vname").value.trim();
-  const vPhone = document.getElementById("m-vphone").value.trim();
-  const rName  = document.getElementById("m-rname").value.trim();
-  const rRoom  = document.getElementById("m-room").value.trim();
 
-  if (!vName || !rName || !rRoom) {
-    showToast("Please fill in all fields", "toast-err");
-    return;
-  }
-  const btnId = action === "in" ? "modal-btn-in" : "modal-btn-out";
-  setLoading(btnId, true);
-  const ok = await addEntry(vName, vPhone, rName, rRoom, action);
-  setLoading(btnId, false);
-  if (ok) {
-    closeModal();
-    showSuccess(action, vName, rName, rRoom);
-  }
+function showNextNotif() {
+  if (!notifQueue.length) { notifShowing = false; return; }
+  notifShowing = true;
+  const { entry, type } = notifQueue.shift();
+  const isIn = entry.status === "in" || type === "added";
+
+  document.getElementById("notif-icon").className =
+    "notif-icon " + (isIn ? "notif-in" : "notif-out");
+  document.getElementById("notif-icon").innerHTML =
+    isIn ? '<i class="ti ti-door-enter"></i>' : '<i class="ti ti-door-exit"></i>';
+  document.getElementById("notif-title").textContent =
+    isIn
+      ? `${entry.visitorName} just signed in`
+      : `${entry.visitorName} just signed out`;
+  document.getElementById("notif-detail").textContent =
+    `Visiting ${entry.residentName} · Room ${entry.room}`;
+  document.getElementById("notif-time").textContent =
+    "At " + (isIn ? entry.timeInStr : entry.timeOutStr || fmtTime(new Date()));
+
+  const popup = document.getElementById("notif-popup");
+  popup.classList.remove("hidden");
+  popup.classList.add("notif-enter");
+
+  clearTimeout(popup._t);
+  popup._t = setTimeout(() => {
+    closeNotif();
+  }, 6000);
+}
+
+function closeNotif() {
+  const popup = document.getElementById("notif-popup");
+  popup.classList.add("hidden");
+  popup.classList.remove("notif-enter");
+  setTimeout(showNextNotif, 400);
 }
 
 // ── CSV Export ────────────────────────────────────────────────
 function exportCSV() {
-  const headers = ["Date","Visitor Name","Visitor Phone","Resident Name","Room","Time In","Time Out","Status"];
-  const rows = logs.map(l =>
-    [l.date, l.vName, l.vPhone, l.rName, l.rRoom,
-     l.timeInStr||fmtTime(l.timeIn), l.timeOutStr||fmtTime(l.timeOut)||"", l.status]
+  const headers = ["Date","Visitor Name","Visitor Email","Visitor Phone",
+                   "Resident Name","Resident Email","Room","Time In","Time Out","Status"];
+  const rows = allEntries.map(e =>
+    [e.date, e.visitorName, e.visitorEmail, e.visitorPhone||"",
+     e.residentName, e.residentEmail||"", e.room,
+     e.timeInStr||fmtTime(e.timeIn), e.timeOutStr||"", e.status]
       .map(v => `"${String(v||"").replace(/"/g,'""')}"`)
       .join(",")
   );
   const csv  = [headers.join(","), ...rows].join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
-  a.href     = url;
-  a.download = `hostel-register-${new Date().toISOString().slice(0,10)}.csv`;
+  const a    = Object.assign(document.createElement("a"), {
+    href:     URL.createObjectURL(blob),
+    download: `hostel-register-${new Date().toISOString().slice(0,10)}.csv`,
+  });
   a.click();
-  URL.revokeObjectURL(url);
+  URL.revokeObjectURL(a.href);
 }
 
 // ── Init ──────────────────────────────────────────────────────
-document.addEventListener("DOMContentLoaded", async () => {
-  // Check if coordinator URL — must run first
-  checkCoordURL();
-
-  // Hostel name
-  if (typeof HOSTEL_NAME !== "undefined" && HOSTEL_NAME) {
-    const el = document.getElementById("hostel-name");
-    if (el) el.textContent = HOSTEL_NAME;
+document.addEventListener("DOMContentLoaded", () => {
+  if (typeof HOSTEL_NAME !== "undefined") {
     document.title = HOSTEL_NAME;
+    const n = document.getElementById("hostel-name");
+    if (n) n.textContent = HOSTEL_NAME;
   }
-
-  // Date is automatic (todayStr() used at sign-in time)
-
-  // Connect to Google Sheets
-  await Sheets.init();
 });

@@ -72,22 +72,46 @@ function initFirebase() {
   firebaseDB  = firebase.database();
 }
 
+// ── Init Google SDK once when script loads ───────────────────
+// We initialise immediately so it's ready the first time the
+// button is tapped — no double-tap needed.
+let googleReady = false;
+
+function initGoogleSDK() {
+  if (googleReady || typeof google === "undefined") return;
+  google.accounts.id.initialize({
+    client_id:  GOOGLE_CLIENT_ID,
+    callback:   handleGoogleLogin,
+    ux_mode:    "popup",
+    context:    "signin",
+    auto_select: false,
+  });
+  googleReady = true;
+}
+
+// Called as soon as Google's script finishes loading
+window.onGoogleLibraryLoad = function() {
+  initGoogleSDK();
+};
+
 // ── Trigger Google login ──────────────────────────────────────
 function triggerGoogleLogin() {
-  google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
-    callback:  handleGoogleLogin,
-    ux_mode:   "popup",
-    context:   "signin",
+  // Ensure SDK is ready (catches edge cases where onload fired late)
+  initGoogleSDK();
+
+  // Use renderButton on our custom button element so one tap suffices
+  const btnEl = document.getElementById("google-btn");
+  google.accounts.id.renderButton(btnEl, {
+    type:  "standard",
+    theme: "outline",
+    size:  "large",
+    text:  "continue_with",
+    shape: "rectangular",
+    width: btnEl.offsetWidth || 300,
   });
-  google.accounts.id.prompt(notification => {
-    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-      google.accounts.id.renderButton(
-        document.getElementById("google-btn"),
-        { theme: "outline", size: "large", width: 300 }
-      );
-    }
-  });
+
+  // Also trigger the One Tap prompt (catches already-signed-in users)
+  google.accounts.id.prompt();
 }
 
 // ── Handle Google credential ──────────────────────────────────

@@ -6,67 +6,80 @@
   <title>Academic City Hostel</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css" />
-
-  <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-
-  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════
-     LOGIN SCREEN
-══════════════════════════════════════════ -->
-<div id="login-screen" class="login-screen">
-  <!-- decorative blobs -->
+<!-- ══ STEP 1 — ROLE PICKER ══ -->
+<div id="role-screen" class="login-screen">
   <div class="login-blob login-blob-1"></div>
   <div class="login-blob login-blob-2"></div>
-
-  <div class="login-card">
+  <div class="login-card wide">
     <div class="login-logo">
-      <div class="logo-icon large">
-        <i class="ti ti-building-community"></i>
-      </div>
+      <div class="logo-icon large"><i class="ti ti-building-community"></i></div>
     </div>
     <h1 class="login-title">Academic City<br>Hostel Register</h1>
-    <p class="login-sub">Sign in with your ACity Google account to access the visitor register</p>
-
-    <div id="g_id_onload"
-      data-client_id=""
-      data-context="signin"
-      data-ux_mode="popup"
-      data-callback="handleGoogleLogin"
-      data-auto_prompt="false">
+    <p class="login-sub">Who are you? Pick your role to continue</p>
+    <div class="role-grid">
+      <button class="role-card" onclick="selectRole('admin')">
+        <div class="role-icon role-icon-admin"><i class="ti ti-shield-check"></i></div>
+        <div class="role-label">Admin</div>
+        <div class="role-desc">Hostel coordinator &amp; staff</div>
+      </button>
+      <button class="role-card" onclick="selectRole('student')">
+        <div class="role-icon role-icon-student"><i class="ti ti-school"></i></div>
+        <div class="role-label">Student</div>
+        <div class="role-desc">ACity student visiting a resident</div>
+      </button>
+      <button class="role-card" onclick="selectRole('outsider')">
+        <div class="role-icon role-icon-outsider"><i class="ti ti-user"></i></div>
+        <div class="role-label">Outsider</div>
+        <div class="role-desc">External guest visitor</div>
+      </button>
     </div>
+  </div>
+</div>
 
-    <button class="google-btn" onclick="triggerGoogleLogin()">
-      <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
+<!-- ══ STEP 2 — GOOGLE LOGIN ══ -->
+<div id="login-screen" class="login-screen hidden">
+  <div class="login-blob login-blob-1"></div>
+  <div class="login-blob login-blob-2"></div>
+  <div class="login-card">
+    <button class="back-btn" onclick="goBackToRoles()">
+      <i class="ti ti-arrow-left"></i> Back
+    </button>
+    <div class="role-badge-wrap">
+      <div class="role-badge" id="login-role-badge"></div>
+    </div>
+    <div class="login-logo">
+      <div class="logo-icon large" id="login-logo-icon"><i class="ti ti-building-community"></i></div>
+    </div>
+    <h1 class="login-title" id="login-title">Sign in</h1>
+    <p class="login-sub" id="login-sub">Use the correct Google account for your role</p>
+    <div id="g_id_onload" data-client_id="" data-context="signin"
+      data-ux_mode="popup" data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
+    <button class="google-btn" id="google-btn" onclick="triggerGoogleLogin()">
+      <svg width="20" height="20" viewBox="0 0 48 48">
         <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
         <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
         <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
         <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-        <path fill="none" d="M0 0h48v48H0z"/>
       </svg>
-      Continue with Google
+      <span id="google-btn-text">Continue with Google</span>
     </button>
-
     <div class="login-divider">
-      <span class="login-domain-pill">@acity.edu.gh only</span>
+      <span class="login-domain-pill" id="login-domain-pill">@acity.edu.gh</span>
     </div>
-
     <div id="login-error" class="login-error hidden"></div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     MAIN APP (shown after login)
-══════════════════════════════════════════ -->
+<!-- ══ MAIN APP ══ -->
 <div id="app" class="hidden">
 
-  <!-- HEADER -->
   <header class="site-header">
     <div class="header-inner">
       <div class="header-logo">
@@ -77,42 +90,41 @@
         </div>
       </div>
       <div class="header-right">
-        <div class="user-chip" id="user-chip">
+        <div class="user-role-chip" id="user-role-chip"></div>
+        <div class="user-chip">
           <div class="user-avatar" id="user-avatar"></div>
           <span id="user-name-short"></span>
         </div>
-        <button class="icon-btn" onclick="signOut()" title="Sign out">
+        <button class="icon-btn" onclick="signOut()" title="Sign out of app">
           <i class="ti ti-logout"></i>
         </button>
       </div>
     </div>
   </header>
 
-  <!-- ════════════════════════════
-       VISITOR VIEW
-  ════════════════════════════ -->
+  <!-- ══ VISITOR VIEW ══ -->
   <div id="visitor-app">
 
     <!-- Success screen -->
     <div id="success-screen" class="success-screen hidden">
       <div class="success-icon"><i class="ti ti-circle-check"></i></div>
       <h2 class="success-title" id="success-title">Signed in!</h2>
-      <p class="success-msg" id="success-msg"></p>
+      <p class="success-msg"  id="success-msg"></p>
       <p class="success-time" id="success-time"></p>
       <button class="success-btn" onclick="hideSuccess()">Done</button>
     </div>
 
-    <!-- Visitor form -->
+    <!-- Main visitor form -->
     <div id="visitor-form" class="container">
       <div class="hero">
-        <div class="hero-icon"><i class="ti ti-door-enter"></i></div>
+        <div class="hero-icon" id="visitor-hero-icon"><i class="ti ti-door-enter"></i></div>
         <h1 class="hero-title">Welcome, <span id="visitor-first-name">there</span></h1>
-        <p class="hero-sub">Sign in when you arrive, sign out when you leave</p>
+        <p class="hero-sub">Sign in on arrival — you'll need a PIN to sign out</p>
       </div>
 
       <div class="form-card">
-        <!-- Auto-filled visitor info -->
-        <div class="autofill-banner">
+        <!-- Auto-fill banner (students) -->
+        <div class="autofill-banner" id="autofill-banner">
           <i class="ti ti-user-check"></i>
           <div>
             <strong id="autofill-name"></strong>
@@ -121,14 +133,30 @@
           <span class="autofill-badge">Auto-filled</span>
         </div>
 
+        <!-- Manual details (outsiders) -->
+        <div class="form-section" id="outsider-name-section" style="display:none">
+          <div class="form-section-head">
+            <div class="form-section-icon blue"><i class="ti ti-user"></i></div>
+            <span>Your details</span>
+          </div>
+          <div class="field">
+            <label for="o-name">Full name</label>
+            <input id="o-name" type="text" placeholder="Your full name" autocomplete="name" />
+          </div>
+          <div class="field">
+            <label for="o-phone">Phone number</label>
+            <input id="o-phone" type="tel" placeholder="0XX XXX XXXX" />
+          </div>
+        </div>
+
         <div class="form-divider"></div>
 
+        <!-- Who to visit -->
         <div class="form-section">
           <div class="form-section-head">
             <div class="form-section-icon amber"><i class="ti ti-home"></i></div>
             <span>Who are you visiting?</span>
           </div>
-
           <div class="field">
             <label for="r-search">Search resident by name or email</label>
             <div class="search-wrap">
@@ -138,7 +166,6 @@
             </div>
             <div id="resident-dropdown" class="dropdown hidden"></div>
           </div>
-
           <div id="selected-resident" class="selected-resident hidden">
             <div class="selected-info">
               <div class="selected-avatar" id="sel-avatar"></div>
@@ -147,50 +174,81 @@
                 <span id="sel-room"></span>
               </div>
             </div>
-            <button class="clear-btn" onclick="clearResident()">
-              <i class="ti ti-x"></i>
-            </button>
+            <button class="clear-btn" onclick="clearResident()"><i class="ti ti-x"></i></button>
           </div>
-
-          <div class="field">
+          <div class="field" id="student-phone-field">
             <label for="v-phone">Your phone number</label>
             <input id="v-phone" type="tel" placeholder="0XX XXX XXXX" />
           </div>
         </div>
 
-        <div class="action-btns">
-          <button id="btn-sign-in" class="action-btn sign-in-btn" onclick="doAction('in')">
-            <i class="ti ti-login"></i><span>Sign In</span>
-          </button>
-          <button id="btn-sign-out" class="action-btn sign-out-btn" onclick="doAction('out')">
-            <i class="ti ti-logout"></i><span>Sign Out</span>
+        <!-- Sign IN only button -->
+        <div class="signin-only-btn-wrap">
+          <button id="btn-sign-in" class="btn-sign-in-full" onclick="doSignIn()">
+            <i class="ti ti-login"></i> Sign In
           </button>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- ════════════════════════════
-       ADMIN DASHBOARD
-  ════════════════════════════ -->
+      <!-- Sign OUT section — separate card -->
+      <div class="signout-card" id="signout-card">
+        <div class="signout-card-header">
+          <div class="signout-card-icon"><i class="ti ti-lock"></i></div>
+          <div>
+            <div class="signout-card-title">Ready to leave?</div>
+            <div class="signout-card-sub">Request a one-time PIN to sign out</div>
+          </div>
+        </div>
+
+        <!-- Step A: Request PIN -->
+        <div id="pin-request-step">
+          <button class="request-pin-btn" onclick="requestSignOutPin()">
+            <i class="ti ti-key"></i> Request Sign-Out PIN
+          </button>
+        </div>
+
+        <!-- Step B: PIN revealed + entry -->
+        <div id="pin-entry-step" class="hidden">
+          <div class="pin-reveal-box" id="pin-reveal-box">
+            <div class="pin-reveal-label">Your one-time PIN</div>
+            <div class="pin-reveal-digits" id="pin-reveal-digits"></div>
+            <div class="pin-reveal-note">Show this to no one. Valid for this sign-out only.</div>
+          </div>
+          <div class="pin-input-row">
+            <div class="pin-dots" id="so-pin-dots">
+              <span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+          <div class="pin-keypad-sm">
+            <button class="pin-key" onclick="soPinPress('1')">1</button>
+            <button class="pin-key" onclick="soPinPress('2')">2</button>
+            <button class="pin-key" onclick="soPinPress('3')">3</button>
+            <button class="pin-key" onclick="soPinPress('4')">4</button>
+            <button class="pin-key" onclick="soPinPress('5')">5</button>
+            <button class="pin-key" onclick="soPinPress('6')">6</button>
+            <button class="pin-key" onclick="soPinPress('7')">7</button>
+            <button class="pin-key" onclick="soPinPress('8')">8</button>
+            <button class="pin-key" onclick="soPinPress('9')">9</button>
+            <button class="pin-key pin-key-empty"></button>
+            <button class="pin-key" onclick="soPinPress('0')">0</button>
+            <button class="pin-key pin-key-del" onclick="soPinDel()"><i class="ti ti-backspace"></i></button>
+          </div>
+          <div class="pin-error hidden" id="so-pin-error">Incorrect PIN. Try again.</div>
+          <button id="btn-sign-out" class="btn-sign-out-full" onclick="doSignOut()" disabled>
+            <i class="ti ti-logout"></i> Sign Out
+          </button>
+          <button class="cancel-pin-btn" onclick="cancelPin()">Cancel</button>
+        </div>
+      </div>
+
+    </div><!-- /visitor-form -->
+  </div><!-- /visitor-app -->
+
+  <!-- ══ ADMIN DASHBOARD ══ -->
   <div id="admin-app" class="hidden">
 
-    <!-- Notification popup -->
-    <div id="notif-popup" class="notif-popup hidden">
-      <div class="notif-strip" id="notif-strip"></div>
-      <div class="notif-inner">
-        <div class="notif-icon notif-in" id="notif-icon"><i class="ti ti-door-enter"></i></div>
-        <div class="notif-body">
-          <div class="notif-label" id="notif-label">New sign-in</div>
-          <div class="notif-title" id="notif-title"></div>
-          <div class="notif-detail" id="notif-detail"></div>
-          <div class="notif-time" id="notif-time"></div>
-        </div>
-        <button class="notif-close" onclick="closeNotif()" aria-label="Dismiss">
-          <i class="ti ti-x"></i>
-        </button>
-      </div>
-    </div>
+    <!-- Stacked notification area -->
+    <div id="notif-stack" class="notif-stack"></div>
 
     <div class="container">
       <div class="coord-top">
@@ -200,25 +258,16 @@
         </div>
         <div class="coord-actions">
           <span id="refresh-badge"><i class="ti ti-check"></i> Updated</span>
-          <button class="icon-btn" onclick="fetchEntries()" title="Refresh">
-            <i class="ti ti-refresh"></i>
-          </button>
-          <button class="icon-btn" onclick="exportCSV()" title="Export CSV">
-            <i class="ti ti-download"></i>
-          </button>
-          <a id="sheet-link" href="#" target="_blank" class="icon-btn hidden" title="Open Google Sheet">
-            <i class="ti ti-table"></i>
-          </a>
+          <button class="icon-btn" onclick="fetchEntries()" title="Refresh"><i class="ti ti-refresh"></i></button>
+          <button class="icon-btn" onclick="exportCSV()" title="Export CSV"><i class="ti ti-download"></i></button>
+          <a id="sheet-link" href="#" target="_blank" class="icon-btn hidden" title="Open Sheet"><i class="ti ti-table"></i></a>
         </div>
       </div>
 
-      <!-- Connection status -->
       <div id="sheet-banner" class="sheet-banner hidden">
-        <i class="ti ti-table"></i>
-        <span id="sheet-status"></span>
+        <i class="ti ti-table"></i><span id="sheet-status"></span>
       </div>
 
-      <!-- Stats -->
       <div class="stats-row">
         <div class="stat-card teal-card">
           <div class="stat-icon"><i class="ti ti-door-enter"></i></div>
@@ -237,18 +286,14 @@
         </div>
       </div>
 
-      <!-- Filters -->
       <div class="filter-bar">
         <button class="fpill active" onclick="setFilter('all',this)">All</button>
-        <button class="fpill" onclick="setFilter('in',this)">
-          <span class="dot dot-teal"></span>Still inside
-        </button>
-        <button class="fpill" onclick="setFilter('out',this)">
-          <span class="dot dot-red"></span>Signed out
-        </button>
+        <button class="fpill" onclick="setFilter('in',this)"><span class="dot dot-teal"></span>Still inside</button>
+        <button class="fpill" onclick="setFilter('out',this)"><span class="dot dot-red"></span>Signed out</button>
+        <button class="fpill" onclick="setFilter('student',this)"><span class="dot dot-blue"></span>Students</button>
+        <button class="fpill" onclick="setFilter('outsider',this)"><span class="dot dot-amber"></span>Outsiders</button>
       </div>
 
-      <!-- Log -->
       <div class="log-list" id="log-list">
         <div class="empty-state">
           <i class="ti ti-clipboard-list"></i>

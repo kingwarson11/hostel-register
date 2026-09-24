@@ -1,0 +1,29 @@
+{
+  "residents": {
+    "demo-student-1": {
+      "name":  "Demo Student",
+      "email": "student.demo@acity.edu.gh",
+      "room":  "A01"
+    },
+    "demo-student-2": {
+      "name":  "Efua Asante",
+      "email": "efua.asante@acity.edu.gh",
+      "room":  "B14"
+    },
+    "demo-student-3": {
+      "name":  "Kofi Mensah",
+      "email": "kofi.mensah@acity.edu.gh",
+      "room":  "A25"
+    },
+    "demo-student-4": {
+      "name":  "Abena Darko",
+      "email": "abena.darko@acity.edu.gh",
+      "room":  "C07"
+    },
+    "demo-student-5": {
+      "name":  "Kwame Boateng",
+      "email": "kwame.boateng@acity.edu.gh",
+      "room":  "D12"
+    }
+  }
+}

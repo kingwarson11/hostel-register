@@ -1047,3 +1047,469 @@ body {
   margin-bottom: 4px;
 }
 .notif-popup.notif-out .notif-label { color: var(--red); }
+
+/* ═══════════════════════════════════════════════
+   ROLE PICKER
+═══════════════════════════════════════════════ */
+.login-card.wide { max-width: 480px; }
+
+.role-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.role-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 12px 16px;
+  border-radius: var(--r-lg);
+  border: 1.5px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.06);
+  cursor: pointer;
+  transition: all .2s cubic-bezier(.34,1.2,.64,1);
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.role-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-lg);
+  opacity: 0;
+  transition: opacity .2s;
+}
+.role-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  border-color: rgba(255,255,255,.25);
+  background: rgba(255,255,255,.12);
+}
+.role-card:hover::before { opacity: 1; }
+.role-card:active { transform: translateY(-1px) scale(.99); }
+
+.role-icon {
+  width: 52px; height: 52px;
+  border-radius: var(--r-md);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  margin-bottom: 4px;
+  transition: transform .2s;
+}
+.role-card:hover .role-icon { transform: scale(1.1); }
+
+.role-icon-admin   { background: linear-gradient(135deg,#7c3aed,#4f46e5); box-shadow: 0 4px 16px rgba(124,58,237,.5); }
+.role-icon-student { background: linear-gradient(135deg,var(--brand),#059669); box-shadow: 0 4px 16px rgba(29,158,117,.5); }
+.role-icon-outsider{ background: linear-gradient(135deg,#f59e0b,#d97706); box-shadow: 0 4px 16px rgba(245,158,11,.5); }
+
+.role-label {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+}
+.role-desc {
+  font-size: 11px;
+  color: rgba(255,255,255,.55);
+  text-align: center;
+  line-height: 1.4;
+}
+.role-domain {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 99px;
+  letter-spacing: .03em;
+  margin-top: 2px;
+}
+/* Domain pill colours per role */
+.role-card:nth-child(1) .role-domain { background: rgba(124,58,237,.25); color: #c4b5fd; }
+.role-card:nth-child(2) .role-domain { background: rgba(29,158,117,.25); color: #6ee7b7; }
+.role-card:nth-child(3) .role-domain { background: rgba(245,158,11,.25); color: #fcd34d; }
+
+/* ── Back button ── */
+.back-btn {
+  position: absolute;
+  top: 16px; left: 16px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 600;
+  color: rgba(255,255,255,.6);
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 99px;
+  padding: 6px 13px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.back-btn:hover { color: #fff; background: rgba(255,255,255,.14); }
+
+/* ── Role badge on login card ── */
+.role-badge-wrap { margin-bottom: 12px; }
+.role-badge {
+  display: inline-block;
+  font-size: 12px; font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 5px 16px;
+  border-radius: 99px;
+}
+.badge-admin    { background: rgba(124,58,237,.2); color: #c4b5fd; border: 1px solid rgba(124,58,237,.3); }
+.badge-student  { background: rgba(29,158,117,.2);  color: #6ee7b7; border: 1px solid rgba(29,158,117,.3); }
+.badge-outsider { background: rgba(245,158,11,.2);  color: #fcd34d; border: 1px solid rgba(245,158,11,.3); }
+
+/* ── Logo icon colour variants ── */
+.logo-icon.role-icon-admin    { background: linear-gradient(135deg,#7c3aed,#4f46e5); }
+.logo-icon.role-icon-student  { background: linear-gradient(135deg,var(--brand),#059669); }
+.logo-icon.role-icon-outsider { background: linear-gradient(135deg,#f59e0b,#d97706); }
+
+/* ═══════════════════════════════════════════════
+   ROLE CHIPS IN HEADER
+═══════════════════════════════════════════════ */
+.user-role-chip {
+  font-size: 11px; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 99px;
+}
+.chip-admin    { background: #ede9fe; color: #5b21b6; }
+.chip-student  { background: var(--brand-light); color: var(--brand-dark); }
+.chip-outsider { background: var(--amber-light); color: var(--amber-dark); }
+
+/* ═══════════════════════════════════════════════
+   VISITOR ROLE TAGS IN LOG
+═══════════════════════════════════════════════ */
+.log-name-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 3px;
+}
+.visitor-role-tag {
+  font-size: 10px; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 99px;
+}
+.tag-student  { background: var(--brand-light); color: var(--brand-dark); }
+.tag-outsider { background: var(--amber-light); color: var(--amber-dark); }
+
+/* ═══════════════════════════════════════════════
+   EXTRA FILTER DOT COLOURS
+═══════════════════════════════════════════════ */
+.dot-blue  { background: var(--blue); }
+.dot-amber { background: var(--amber); }
+
+/* ═══════════════════════════════════════════════
+   OUTSIDER / BLUE FORM SECTION ICON
+═══════════════════════════════════════════════ */
+.form-section-icon.blue { background: var(--blue-light); color: var(--blue); }
+
+/* ═══════════════════════════════════════════════
+   MOBILE ADJUSTMENTS
+═══════════════════════════════════════════════ */
+@media (max-width: 420px) {
+  .role-grid { grid-template-columns: 1fr; gap: 10px; }
+  .role-card { flex-direction: row; padding: 14px 16px; text-align: left; gap: 14px; }
+  .role-icon { width: 44px; height: 44px; font-size: 20px; flex-shrink: 0; }
+  .role-desc { text-align: left; }
+  .login-card.wide { max-width: 360px; }
+  .user-role-chip { display: none; }
+}
+
+/* ═══════════════════════════════════════════════
+   SIGN-IN BUTTON (full width)
+═══════════════════════════════════════════════ */
+.signin-only-btn-wrap {
+  padding: 0 0 0 0;
+  border-top: 1px solid var(--gray-100);
+}
+.btn-sign-in-full {
+  width: 100%;
+  padding: 18px;
+  font-size: 16px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: linear-gradient(135deg, var(--brand) 0%, #059669 100%);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: all .15s;
+  letter-spacing: .02em;
+}
+.btn-sign-in-full .ti { font-size: 20px; }
+.btn-sign-in-full:hover:not(:disabled) { opacity: .9; }
+.btn-sign-in-full:active { transform: scale(.99); }
+.btn-sign-in-full:disabled { opacity: .55; cursor: not-allowed; }
+
+/* ═══════════════════════════════════════════════
+   SIGN-OUT CARD
+═══════════════════════════════════════════════ */
+.signout-card {
+  background: var(--gray-0);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  margin-top: 16px;
+}
+.signout-card-header {
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 20px;
+  background: linear-gradient(135deg, #fef2f2, #fde8e8);
+  border-bottom: 1px solid #fca5a5;
+}
+.signout-card-icon {
+  width: 44px; height: 44px;
+  border-radius: var(--r-md);
+  background: var(--red-light);
+  border: 1px solid #fca5a5;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; color: var(--red);
+  flex-shrink: 0;
+}
+.signout-card-title { font-size: 15px; font-weight: 700; color: var(--red-dark); }
+.signout-card-sub   { font-size: 13px; color: var(--red); margin-top: 2px; }
+
+/* ── Request PIN button ── */
+#pin-request-step { padding: 20px; }
+.request-pin-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: var(--red-light);
+  color: var(--red-dark);
+  border: 1.5px solid #fca5a5;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: all .15s;
+  letter-spacing: .01em;
+}
+.request-pin-btn:hover { background: #fca5a5; }
+.request-pin-btn .ti  { font-size: 18px; }
+
+/* ── PIN entry step ── */
+#pin-entry-step { padding: 20px; }
+
+.pin-reveal-box {
+  text-align: center;
+  background: var(--gray-900);
+  border-radius: var(--r-lg);
+  padding: 20px 16px 16px;
+  margin-bottom: 20px;
+  transition: background .3s;
+}
+.pin-reveal-box.pin-correct { background: var(--brand-dark); }
+.pin-reveal-label {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em;
+  color: rgba(255,255,255,.5);
+  margin-bottom: 10px;
+}
+.pin-reveal-digits {
+  font-size: 48px; font-weight: 900;
+  color: #fff;
+  letter-spacing: 12px;
+  font-variant-numeric: tabular-nums;
+  font-family: "SF Mono", "Fira Code", monospace;
+  text-shadow: 0 0 24px rgba(255,255,255,.3);
+}
+.pin-reveal-note {
+  font-size: 11px;
+  color: rgba(255,255,255,.35);
+  margin-top: 10px;
+  line-height: 1.4;
+}
+
+/* ── PIN dots ── */
+.pin-input-row { display: flex; justify-content: center; margin-bottom: 16px; }
+.pin-dots {
+  display: flex; gap: 14px;
+}
+.pin-dots span {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--gray-300);
+  background: transparent;
+  transition: all .15s;
+}
+.pin-dots span.filled {
+  background: var(--red);
+  border-color: var(--red);
+  transform: scale(1.15);
+}
+.pin-dots span.shake { animation: shake .4s ease; border-color: var(--red); }
+@keyframes shake {
+  0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)}
+  40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)}
+}
+
+/* ── Compact keypad ── */
+.pin-keypad-sm {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.pin-key {
+  height: 56px;
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--gray-200);
+  background: var(--gray-50);
+  font-size: 20px; font-weight: 700;
+  color: var(--gray-900);
+  cursor: pointer;
+  transition: all .1s;
+  display: flex; align-items: center; justify-content: center;
+}
+.pin-key:active  { background: var(--gray-200); transform: scale(.93); }
+.pin-key-empty   { background: transparent; border-color: transparent; pointer-events: none; }
+.pin-key-del     { font-size: 18px; color: var(--gray-500); }
+
+.pin-error {
+  text-align: center;
+  font-size: 13px; font-weight: 600;
+  color: var(--red);
+  margin-bottom: 10px;
+  padding: 8px;
+  background: var(--red-light);
+  border-radius: var(--r-sm);
+}
+
+/* ── Sign-out button ── */
+.btn-sign-out-full {
+  width: 100%;
+  padding: 15px;
+  font-size: 15px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: var(--red);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: all .15s;
+  letter-spacing: .02em;
+  box-shadow: 0 4px 16px rgba(229,57,53,.35);
+  margin-bottom: 10px;
+}
+.btn-sign-out-full:hover:not(:disabled) { background: #d32f2f; }
+.btn-sign-out-full:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+.btn-sign-out-full .ti { font-size: 18px; }
+
+.cancel-pin-btn {
+  width: 100%; padding: 10px;
+  font-size: 13px; font-weight: 600;
+  background: transparent; border: none;
+  color: var(--gray-500); cursor: pointer;
+  transition: color .15s;
+}
+.cancel-pin-btn:hover { color: var(--gray-900); }
+
+/* ═══════════════════════════════════════════════
+   STACKED NOTIFICATION PILLS
+═══════════════════════════════════════════════ */
+.notif-stack {
+  position: fixed;
+  top: 76px; right: 16px;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  pointer-events: none;
+}
+
+.notif-pill {
+  background: var(--gray-0);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--gray-200);
+  overflow: hidden;
+  position: relative;
+  pointer-events: all;
+  opacity: 0;
+  transform: translateX(40px) scale(.95);
+  transition: opacity .35s cubic-bezier(.34,1.2,.64,1),
+              transform .35s cubic-bezier(.34,1.2,.64,1);
+}
+.notif-pill-show {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+.notif-pill-hide {
+  opacity: 0 !important;
+  transform: translateX(50px) scale(.9) !important;
+}
+
+.notif-pill-in  { border-top: 3px solid var(--brand); }
+.notif-pill-out { border-top: 3px solid var(--red); }
+
+.np-icon {
+  width: 36px; height: 36px;
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.notif-pill-in  .np-icon { background: var(--brand-light); color: var(--brand); }
+.notif-pill-out .np-icon { background: var(--red-light);   color: var(--red); }
+
+.notif-pill > div:first-of-type { /* inner flex wrapper */}
+.notif-pill {
+  display: block;
+}
+.notif-pill .notif-inner-flex {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 14px 10px;
+}
+
+/* rebuild inner layout */
+.np-body  { flex: 1; min-width: 0; }
+.np-label {
+  font-size: 10px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .08em;
+  margin-bottom: 2px;
+}
+.notif-pill-in  .np-label { color: var(--brand); }
+.notif-pill-out .np-label { color: var(--red); }
+.np-name   { font-size: 14px; font-weight: 700; color: var(--gray-900); }
+.np-detail { font-size: 12px; color: var(--gray-600); }
+.np-time   { font-size: 11px; color: var(--gray-400); font-weight: 600; margin-top: 2px; }
+
+.np-close {
+  position: absolute; top: 10px; right: 10px;
+  background: var(--gray-100); border: none;
+  color: var(--gray-400); cursor: pointer;
+  font-size: 13px; width: 22px; height: 22px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.np-close:hover { background: var(--gray-200); color: var(--gray-900); }
+
+/* Progress bar — depletes over 10s */
+.np-progress {
+  height: 3px;
+  background: var(--gray-200);
+  position: absolute; bottom: 0; left: 0; right: 0;
+}
+.notif-pill-show .np-progress {
+  animation: depleteBar 10s linear forwards;
+}
+.notif-pill-in  .np-progress::after,
+.notif-pill-out .np-progress::after {
+  content: '';
+  display: block; height: 100%;
+  animation: depleteBar 10s linear forwards;
+}
+.notif-pill-in  .np-progress { background: var(--brand); }
+.notif-pill-out .np-progress { background: var(--red); }
+@keyframes depleteBar {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
+@media(max-width:420px) {
+  .notif-stack { right: 8px; left: 8px; width: auto; }
+  .pin-reveal-digits { font-size: 40px; letter-spacing: 8px; }
+}
+
+/* ── "Already done today" state on success screen ── */
+.success-in  .ti-info-circle   { color: var(--brand); }
+.success-out .ti-calendar-off  { color: var(--red); }

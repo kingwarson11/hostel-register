@@ -53,6 +53,10 @@ function setLoading(id, on) {
 //  VISITOR FORM
 // ══════════════════════════════════════════════════════════════
 
+// Track selected ID type and photo
+let selectedIdType  = null;
+let idPhotoBase64   = null;
+
 function initVisitorForm() {
   const isOutsider = currentUser.role === "outsider";
 
@@ -62,7 +66,6 @@ function initVisitorForm() {
   if (isOutsider) {
     document.getElementById("autofill-banner").classList.add("hidden");
     document.getElementById("outsider-name-section").style.display = "block";
-    document.getElementById("student-phone-field").style.display   = "none";
     document.getElementById("o-name").value = currentUser.name;
     document.getElementById("visitor-hero-icon").style.background =
       "linear-gradient(135deg,#fef3c7,#fde68a)";
@@ -70,31 +73,114 @@ function initVisitorForm() {
     document.getElementById("autofill-name").textContent  = currentUser.name;
     document.getElementById("autofill-email").textContent = currentUser.email;
     document.getElementById("outsider-name-section").style.display = "none";
-    document.getElementById("student-phone-field").style.display   = "block";
   }
+
+  // Reset new fields
+  selectedIdType = null;
+  idPhotoBase64  = null;
+  document.querySelectorAll(".id-type-btn").forEach(b => b.classList.remove("selected"));
+  document.getElementById("id-upload-field").classList.add("hidden");
+  document.getElementById("id-preview").classList.add("hidden");
+  document.getElementById("id-upload-placeholder").classList.remove("hidden");
+  document.getElementById("id-retake-btn").classList.add("hidden");
 
   loadResidents();
   resetSignOutCard();
+  loadStoredVisitInfo();
+}
+
+// ── Hostel radio toggle ───────────────────────────────────────
+function onHostelChange() {
+  const val = document.querySelector('input[name="hostel"]:checked')?.value;
+  document.getElementById("hostel-a-label").classList.toggle("radio-selected", val === "Hostel A");
+  document.getElementById("hostel-b-label").classList.toggle("radio-selected", val === "Hostel B");
+}
+
+// ── ID type selection ─────────────────────────────────────────
+function selectIdType(btn) {
+  document.querySelectorAll(".id-type-btn").forEach(b => b.classList.remove("selected"));
+  btn.classList.add("selected");
+  selectedIdType = btn.dataset.id;
+  document.getElementById("id-upload-label").textContent =
+    `Upload photo of your ${selectedIdType} *`;
+  document.getElementById("id-upload-field").classList.remove("hidden");
+  // Reset photo
+  idPhotoBase64 = null;
+  document.getElementById("id-preview").classList.add("hidden");
+  document.getElementById("id-preview").src = "";
+  document.getElementById("id-upload-placeholder").classList.remove("hidden");
+  document.getElementById("id-retake-btn").classList.add("hidden");
+}
+
+// ── ID photo upload ───────────────────────────────────────────
+function onIdPhotoSelected(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    idPhotoBase64 = e.target.result;  // base64 string
+    const preview = document.getElementById("id-preview");
+    preview.src = idPhotoBase64;
+    preview.classList.remove("hidden");
+    document.getElementById("id-upload-placeholder").classList.add("hidden");
+    document.getElementById("id-retake-btn").classList.remove("hidden");
+  };
+  reader.readAsDataURL(file);
+}
+
+function retakeIdPhoto() {
+  idPhotoBase64 = null;
+  document.getElementById("id-file-input").value = "";
+  document.getElementById("id-preview").classList.add("hidden");
+  document.getElementById("id-preview").src = "";
+  document.getElementById("id-upload-placeholder").classList.remove("hidden");
+  document.getElementById("id-retake-btn").classList.add("hidden");
+}
+
+// ── Load stored visit info for sign-out card ──────────────────
+async function loadStoredVisitInfo() {
+  const entries = await fetchAllEntries();
+  const today   = todayStr();
+  const open    = entries.find(e =>
+    e.visitorEmail === currentUser.email && e.date === today && e.status === "in"
+  );
+  if (open) {
+    document.getElementById("svi-name").textContent     = open.visitorName;
+    document.getElementById("svi-resident").textContent =
+      `${open.residentName} · Room ${open.room} · ${open.hostel || ""}`;
+    document.getElementById("svi-timein").textContent   = `Signed in at ${open.timeInStr}`;
+    document.getElementById("stored-visit-info").classList.remove("hidden");
+    // Store for sign-out use
+    activeEntry = open;
+  }
 }
 
 // ── SIGN IN ───────────────────────────────────────────────────
 async function doSignIn() {
   const isOutsider = currentUser.role === "outsider";
-  let vName, vPhone;
+  let vName;
 
   if (isOutsider) {
-    vName  = document.getElementById("o-name").value.trim();
-    vPhone = document.getElementById("o-phone").value.trim();
+    vName = document.getElementById("o-name").value.trim();
     if (!vName) { showToast("Please enter your full name", "toast-err"); return; }
   } else {
-    vName  = currentUser.name;
-    vPhone = document.getElementById("v-phone").value.trim();
+    vName = currentUser.name;
   }
 
+  // Validate all required fields
+  const phone  = document.getElementById("v-phone").value.trim();
+  const hostel = document.querySelector('input[name="hostel"]:checked')?.value;
+  const room   = document.getElementById("room-input").value.trim();
+
+  if (!phone)  { showToast("Please enter your phone number", "toast-err"); return; }
+  if (!hostel) { showToast("Please select Hostel A or Hostel B", "toast-err"); return; }
   if (!selectedResident) {
     showToast("Please search and select the resident you are visiting", "toast-err");
     return;
   }
+  if (!room) { showToast("Please enter the room number", "toast-err"); return; }
+  if (!selectedIdType) { showToast("Please select your ID type", "toast-err"); return; }
+  if (!idPhotoBase64) { showToast("Please upload a photo of your ID", "toast-err"); return; }
 
   // One sign-in AND one sign-out max per person per day
   const existing   = await fetchAllEntries();
@@ -108,14 +194,17 @@ async function doSignIn() {
   const now   = new Date();
   const entry = {
     id:            Date.now().toString(),
-    date:          todayStr(),
+    date:          today,
     visitorName:   vName,
     visitorEmail:  currentUser.email,
-    visitorPhone:  vPhone,
+    visitorPhone:  phone,
     visitorRole:   currentUser.role,
+    hostel,
     residentName:  selectedResident.name,
     residentEmail: selectedResident.email,
-    room:          selectedResident.room,
+    room,
+    idType:        selectedIdType,
+    idPhoto:       idPhotoBase64,   // stored in Firebase, not Sheets
     timeIn:        now.toISOString(),
     timeInStr:     fmtTime(now),
     timeOut:       null,
@@ -126,8 +215,16 @@ async function doSignIn() {
   setLoading("btn-sign-in", true);
   await writeEntry(entry);
   setLoading("btn-sign-in", false);
-  showSuccess("in", vName, selectedResident.name, selectedResident.room);
-  if (!isOutsider) document.getElementById("v-phone").value = "";
+
+  // Show sign-out card with stored info immediately
+  activeEntry = entry;
+  document.getElementById("svi-name").textContent     = vName;
+  document.getElementById("svi-resident").textContent =
+    `${selectedResident.name} · Room ${room} · ${hostel}`;
+  document.getElementById("svi-timein").textContent   = `Signed in at ${entry.timeInStr}`;
+  document.getElementById("stored-visit-info").classList.remove("hidden");
+
+  showSuccess("in", vName, selectedResident.name, room);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -151,33 +248,24 @@ function resetSignOutCard() {
 }
 
 async function requestSignOutPin() {
-  if (!selectedResident) {
-    showToast("First select the resident you visited above", "toast-err");
-    return;
-  }
-
-  const entries = await fetchAllEntries();
   const today   = todayStr();
+  const entries = await fetchAllEntries();
 
   // Block if already signed out today
   const doneToday = entries.find(e =>
     e.visitorEmail === currentUser.email && e.date === today && e.status === "out"
   );
-  if (doneToday) {
-    showAlreadyDone("out");
-    return;
+  if (doneToday) { showAlreadyDone("out"); return; }
+
+  // Use stored activeEntry first, otherwise search Firebase
+  if (!activeEntry) {
+    activeEntry = entries.find(e =>
+      e.visitorEmail === currentUser.email && e.status === "in" && e.date === today
+    );
   }
 
-  // Find the open sign-in
-  activeEntry = entries.find(e =>
-    e.visitorEmail  === currentUser.email &&
-    e.residentEmail === selectedResident.email &&
-    e.status        === "in" &&
-    e.date          === today
-  );
-
   if (!activeEntry) {
-    showToast("No active sign-in found for this visit. Did you sign in?", "toast-err");
+    showToast("No active sign-in found. Please sign in first.", "toast-err");
     return;
   }
 
@@ -376,9 +464,10 @@ function renderLogs() {
       <div class="log-avatar ${e.status==="in"?"av-in":"av-out"}">${initials(e.visitorName)}</div>
       <div class="log-body">
         <div class="log-name-row"><span class="log-name">${e.visitorName}</span>${tag}</div>
-        <div class="log-meta">Visiting <strong>${e.residentName}</strong> · Room <strong>${e.room}</strong></div>
+        <div class="log-meta">Visiting <strong>${e.residentName}</strong> · Room <strong>${e.room}</strong>${e.hostel?` · <strong>${e.hostel}</strong>`:""}</div>
         <div class="log-email"><i class="ti ti-mail"></i> ${e.visitorEmail}</div>
         ${e.visitorPhone?`<div class="log-phone"><i class="ti ti-phone"></i> ${e.visitorPhone}</div>`:""}
+        ${e.idType?`<div class="log-phone"><i class="ti ti-id-badge"></i> ${e.idType}${e.idPhoto?` <a href="${e.idPhoto}" target="_blank" class="id-view-link">View ID</a>`:""}</div>`:""}
       </div>
       <div class="log-right">
         <div class="log-time">In: ${e.timeInStr||fmtTime(e.timeIn)}</div>
@@ -433,7 +522,7 @@ function pushNotif(entry, type) {
       <div class="np-body">
         <div class="np-label">${isIn ? "Signed in" : "Signed out"}</div>
         <div class="np-name">${entry.visitorName}</div>
-        <div class="np-detail">${entry.residentName} · Room ${entry.room}</div>
+        <div class="np-detail">${entry.residentName} · Room ${entry.room}${entry.hostel ? " · " + entry.hostel : ""}</div>
         <div class="np-time">At ${isIn ? (entry.timeInStr||fmtTime(entry.timeIn)) : (entry.timeOutStr||fmtTime(new Date()))}</div>
       </div>
       <button class="np-close" onclick="dismissNotif('${id}')"><i class="ti ti-x"></i></button>
@@ -461,10 +550,10 @@ function dismissNotif(id) {
 
 // ── CSV export ────────────────────────────────────────────────
 function exportCSV() {
-  const h = ["Date","Visitor Name","Email","Phone","Role","Resident Name","Resident Email","Room","Time In","Time Out","Status"];
+  const h = ["Date","Visitor Name","Email","Phone","Role","Hostel","Resident Name","Resident Email","Room","ID Type","Time In","Time Out","Status"];
   const r = allEntries.map(e=>
     [e.date,e.visitorName,e.visitorEmail,e.visitorPhone||"",e.visitorRole||"",
-     e.residentName,e.residentEmail||"",e.room,
+     e.hostel||"",e.residentName,e.residentEmail||"",e.room,e.idType||"",
      e.timeInStr||fmtTime(e.timeIn),e.timeOutStr||"",e.status]
       .map(v=>`"${String(v||"").replace(/"/g,'""')}"`)
       .join(",")

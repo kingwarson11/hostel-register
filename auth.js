@@ -1,5 +1,134 @@
 // auth.js — Role picker + Google OAuth
 
+// ══════════════════════════════════════════════════════════════
+//  DEVELOPER BACKDOOR
+//  Tap any role icon 3 times → PIN prompt → enter 0000 → role picker
+// ══════════════════════════════════════════════════════════════
+
+const DEV_BACKDOOR_PIN = "0000";
+
+// Per-icon tap counters
+const devIconTaps  = { admin: 0, student: 0, outsider: 0 };
+const devIconTimers = {};
+
+function devIconTap(event, role) {
+  if (typeof DEV_MODE === "undefined" || !DEV_MODE) return;
+
+  // Stop the event from also triggering selectRole on the card
+  event.stopPropagation();
+
+  devIconTaps[role]++;
+  clearTimeout(devIconTimers[role]);
+
+  // Flash the icon slightly so Warren knows taps are registering
+  const icon = document.getElementById("dev-icon-" + role);
+  icon.classList.add("dev-icon-tapped");
+  setTimeout(() => icon.classList.remove("dev-icon-tapped"), 180);
+
+  // Reset after 1.5s of inactivity
+  devIconTimers[role] = setTimeout(() => {
+    devIconTaps[role] = 0;
+  }, 1500);
+
+  if (devIconTaps[role] >= 3) {
+    devIconTaps[role] = 0;
+    openDevPanel();
+  }
+}
+
+// ── Dev panel open/close ──────────────────────────────────────
+function openDevPanel() {
+  // Reset to PIN step
+  devPinBuffer = "";
+  updateDevPinDots();
+  document.getElementById("dev-pin-step").classList.remove("hidden");
+  document.getElementById("dev-role-step").classList.add("hidden");
+  document.getElementById("dev-pin-error").classList.add("hidden");
+
+  if (typeof DEV_DEVELOPER_NAME !== "undefined") {
+    document.getElementById("dev-sub").textContent =
+      `Hi ${DEV_DEVELOPER_NAME} 👋 — enter your 4-digit developer PIN`;
+  }
+
+  document.getElementById("dev-backdrop").classList.remove("hidden");
+  const panel = document.getElementById("dev-panel");
+  panel.classList.remove("hidden");
+  requestAnimationFrame(() => panel.classList.add("dev-panel-open"));
+}
+
+function closeDevPanel() {
+  const panel = document.getElementById("dev-panel");
+  panel.classList.remove("dev-panel-open");
+  setTimeout(() => {
+    panel.classList.add("hidden");
+    document.getElementById("dev-backdrop").classList.add("hidden");
+  }, 350);
+  devPinBuffer = "";
+  updateDevPinDots();
+}
+
+// ── PIN entry ─────────────────────────────────────────────────
+let devPinBuffer = "";
+
+function devPinPress(digit) {
+  if (devPinBuffer.length >= 4) return;
+  devPinBuffer += digit;
+  updateDevPinDots();
+  if (devPinBuffer.length === 4) setTimeout(checkDevPin, 150);
+}
+
+function devPinDel() {
+  devPinBuffer = devPinBuffer.slice(0, -1);
+  updateDevPinDots();
+  document.getElementById("dev-pin-error").classList.add("hidden");
+}
+
+function updateDevPinDots() {
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById("dp" + i);
+    if (!dot) continue;
+    dot.classList.toggle("filled", i < devPinBuffer.length);
+  }
+}
+
+function checkDevPin() {
+  if (devPinBuffer === DEV_BACKDOOR_PIN) {
+    // Correct — show role selector
+    document.getElementById("dev-pin-error").classList.add("hidden");
+    document.getElementById("dev-pin-step").classList.add("hidden");
+    document.getElementById("dev-role-step").classList.remove("hidden");
+    document.getElementById("dev-sub").textContent = "Choose which role to enter as";
+
+    // Populate emails
+    if (typeof DEV_ACCOUNTS !== "undefined") {
+      document.getElementById("dev-email-admin").textContent    = DEV_ACCOUNTS.admin.email;
+      document.getElementById("dev-email-student").textContent  = DEV_ACCOUNTS.student.email;
+      document.getElementById("dev-email-outsider").textContent = DEV_ACCOUNTS.outsider.email;
+    }
+  } else {
+    // Wrong PIN — shake and reset
+    document.getElementById("dev-pin-error").classList.remove("hidden");
+    document.querySelectorAll(".dev-pin-dots span").forEach(d => d.classList.add("shake"));
+    setTimeout(() => {
+      devPinBuffer = "";
+      updateDevPinDots();
+      document.querySelectorAll(".dev-pin-dots span").forEach(d => d.classList.remove("shake"));
+    }, 600);
+  }
+}
+
+// ── Enter as a role ───────────────────────────────────────────
+function devLogin(role) {
+  if (typeof DEV_MODE === "undefined" || !DEV_MODE) return;
+  if (typeof DEV_ACCOUNTS === "undefined") return;
+
+  closeDevPanel();
+  selectedRole = role;
+  currentUser  = { ...DEV_ACCOUNTS[role], token: "dev" };
+  initFirebase();
+  setTimeout(onLoginSuccess, 400);
+}
+
 let currentUser    = null;
 let selectedRole   = null;   // 'admin' | 'student' | 'outsider'
 let firebaseApp    = null;

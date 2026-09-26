@@ -114,7 +114,8 @@
       </div>
 
       <div class="form-card">
-        <!-- Auto-fill banner (students) -->
+
+        <!-- ── SECTION 1: Visitor identity ── -->
         <div class="autofill-banner" id="autofill-banner">
           <i class="ti ti-user-check"></i>
           <div>
@@ -124,7 +125,7 @@
           <span class="autofill-badge">Auto-filled</span>
         </div>
 
-        <!-- Manual details (outsiders) -->
+        <!-- Outsider name (manual) -->
         <div class="form-section" id="outsider-name-section" style="display:none">
           <div class="form-section-head">
             <div class="form-section-icon blue"><i class="ti ti-user"></i></div>
@@ -134,22 +135,54 @@
             <label for="o-name">Full name</label>
             <input id="o-name" type="text" placeholder="Your full name" autocomplete="name" />
           </div>
+        </div>
+
+        <div class="form-divider"></div>
+
+        <!-- ── SECTION 2: Contact + Hostel ── -->
+        <div class="form-section">
+          <div class="form-section-head">
+            <div class="form-section-icon teal"><i class="ti ti-phone"></i></div>
+            <span>Contact &amp; hostel</span>
+          </div>
+
           <div class="field">
-            <label for="o-phone">Phone number</label>
-            <input id="o-phone" type="tel" placeholder="0XX XXX XXXX" />
+            <label for="v-phone">Phone number <span class="req">*</span></label>
+            <input id="v-phone" type="tel" placeholder="0XX XXX XXXX" />
+          </div>
+
+          <div class="field">
+            <label>Hostel <span class="req">*</span></label>
+            <div class="radio-group">
+              <label class="radio-option" id="hostel-a-label">
+                <input type="radio" name="hostel" id="hostel-a" value="Hostel A" onchange="onHostelChange()" />
+                <span class="radio-box">
+                  <i class="ti ti-building"></i>
+                  <strong>Hostel A</strong>
+                </span>
+              </label>
+              <label class="radio-option" id="hostel-b-label">
+                <input type="radio" name="hostel" id="hostel-b" value="Hostel B" onchange="onHostelChange()" />
+                <span class="radio-box">
+                  <i class="ti ti-building"></i>
+                  <strong>Hostel B</strong>
+                </span>
+              </label>
+            </div>
           </div>
         </div>
 
         <div class="form-divider"></div>
 
-        <!-- Who to visit -->
+        <!-- ── SECTION 3: Who to visit ── -->
         <div class="form-section">
           <div class="form-section-head">
             <div class="form-section-icon amber"><i class="ti ti-home"></i></div>
             <span>Who are you visiting?</span>
           </div>
+
           <div class="field">
-            <label for="r-search">Search resident by name or email</label>
+            <label for="r-search">Resident name or email</label>
             <div class="search-wrap">
               <i class="ti ti-search search-icon"></i>
               <input id="r-search" type="text" placeholder="Type a name or @acity email…"
@@ -157,23 +190,65 @@
             </div>
             <div id="resident-dropdown" class="dropdown hidden"></div>
           </div>
+
           <div id="selected-resident" class="selected-resident hidden">
             <div class="selected-info">
               <div class="selected-avatar" id="sel-avatar"></div>
               <div>
                 <strong id="sel-name"></strong>
                 <span id="sel-room"></span>
+                <span id="sel-hostel" class="sel-hostel-tag"></span>
               </div>
             </div>
             <button class="clear-btn" onclick="clearResident()"><i class="ti ti-x"></i></button>
           </div>
-          <div class="field" id="student-phone-field">
-            <label for="v-phone">Your phone number</label>
-            <input id="v-phone" type="tel" placeholder="0XX XXX XXXX" />
+
+          <div class="field">
+            <label for="room-input">Room number <span class="req">*</span></label>
+            <input id="room-input" type="text" placeholder="e.g. A101, B203" />
           </div>
         </div>
 
-        <!-- Sign IN only button -->
+        <div class="form-divider"></div>
+
+        <!-- ── SECTION 4: ID verification ── -->
+        <div class="form-section" id="id-section">
+          <div class="form-section-head">
+            <div class="form-section-icon purple"><i class="ti ti-id-badge"></i></div>
+            <span>ID verification</span>
+          </div>
+
+          <div class="field">
+            <label>ID type <span class="req">*</span></label>
+            <div class="id-type-grid">
+              <button class="id-type-btn" data-id="Ghana Card"       onclick="selectIdType(this)"><i class="ti ti-credit-card"></i> Ghana Card</button>
+              <button class="id-type-btn" data-id="Student ID"       onclick="selectIdType(this)"><i class="ti ti-school"></i> Student ID</button>
+              <button class="id-type-btn" data-id="Passport"         onclick="selectIdType(this)"><i class="ti ti-passport"></i> Passport</button>
+              <button class="id-type-btn" data-id="Voter's ID"       onclick="selectIdType(this)"><i class="ti ti-file-check"></i> Voter's ID</button>
+              <button class="id-type-btn" data-id="Driver's License" onclick="selectIdType(this)"><i class="ti ti-car"></i> Driver's License</button>
+              <button class="id-type-btn" data-id="Other"            onclick="selectIdType(this)"><i class="ti ti-dots"></i> Other</button>
+            </div>
+          </div>
+
+          <!-- Photo upload — appears after selecting ID type -->
+          <div class="field hidden" id="id-upload-field">
+            <label id="id-upload-label">Upload photo of your ID <span class="req">*</span></label>
+            <div class="id-upload-zone" id="id-upload-zone" onclick="document.getElementById('id-file-input').click()">
+              <input type="file" id="id-file-input" accept="image/*" capture="environment"
+                     style="display:none" onchange="onIdPhotoSelected(this)" />
+              <div class="id-upload-placeholder" id="id-upload-placeholder">
+                <i class="ti ti-camera"></i>
+                <span>Tap to take photo or choose from gallery</span>
+              </div>
+              <img id="id-preview" class="id-preview hidden" alt="ID preview" />
+            </div>
+            <button class="id-retake-btn hidden" id="id-retake-btn" onclick="retakeIdPhoto()">
+              <i class="ti ti-refresh"></i> Retake photo
+            </button>
+          </div>
+        </div>
+
+        <!-- Sign In button -->
         <div class="signin-only-btn-wrap">
           <button id="btn-sign-in" class="btn-sign-in-full" onclick="doSignIn()">
             <i class="ti ti-login"></i> Sign In
@@ -181,7 +256,7 @@
         </div>
       </div>
 
-      <!-- Sign OUT section — separate card -->
+      <!-- Sign OUT section — separate card, no re-typing needed -->
       <div class="signout-card" id="signout-card">
         <div class="signout-card-header">
           <div class="signout-card-icon"><i class="ti ti-lock"></i></div>
@@ -191,6 +266,13 @@
           </div>
         </div>
 
+        <!-- Stored visit info shown here — no re-typing -->
+        <div class="stored-visit-info hidden" id="stored-visit-info">
+          <div class="svi-row"><i class="ti ti-user"></i><span id="svi-name"></span></div>
+          <div class="svi-row"><i class="ti ti-home"></i><span id="svi-resident"></span></div>
+          <div class="svi-row"><i class="ti ti-door-enter"></i><span id="svi-timein"></span></div>
+        </div>
+
         <!-- Step A: Request PIN -->
         <div id="pin-request-step">
           <button class="request-pin-btn" onclick="requestSignOutPin()">
@@ -198,12 +280,12 @@
           </button>
         </div>
 
-        <!-- Step B: PIN revealed + entry -->
+        <!-- Step B: PIN entry -->
         <div id="pin-entry-step" class="hidden">
           <div class="pin-reveal-box" id="pin-reveal-box">
-            <div class="pin-reveal-label">Your one-time PIN</div>
+            <div class="pin-reveal-label">Your one-time sign-out PIN</div>
             <div class="pin-reveal-digits" id="pin-reveal-digits"></div>
-            <div class="pin-reveal-note">Show this to no one. Valid for this sign-out only.</div>
+            <div class="pin-reveal-note">Enter the PIN below then tap Sign Out</div>
           </div>
           <div class="pin-input-row">
             <div class="pin-dots" id="so-pin-dots">

@@ -145,14 +145,19 @@ async function loadStoredVisitInfo() {
     e.visitorEmail === currentUser.email && e.date === today && e.status === "in"
   );
   if (open) {
-    document.getElementById("svi-name").textContent     = open.visitorName;
-    document.getElementById("svi-resident").textContent =
-      `${open.residentName} · Room ${open.room} · ${open.hostel || ""}`;
-    document.getElementById("svi-timein").textContent   = `Signed in at ${open.timeInStr}`;
-    document.getElementById("stored-visit-info").classList.remove("hidden");
-    // Store for sign-out use
+    showSignOutInfo(open);
     activeEntry = open;
   }
+}
+
+function showSignOutInfo(entry) {
+  document.getElementById("svi-name").textContent =
+    entry.visitorName + " · " + (entry.visitorRole === "outsider" ? "Guest" : "Student");
+  document.getElementById("svi-resident").textContent =
+    `${entry.residentName} · Room ${entry.room}${entry.hostel ? " · " + entry.hostel : ""}`;
+  document.getElementById("svi-timein").textContent =
+    `Signed in at ${entry.timeInStr}`;
+  document.getElementById("stored-visit-info").classList.remove("hidden");
 }
 
 // ── SIGN IN ───────────────────────────────────────────────────
@@ -216,38 +221,24 @@ async function doSignIn() {
   await writeEntry(entry);
   setLoading("btn-sign-in", false);
 
-  // Show sign-out card with stored info immediately
+  // Show sign-out card with stored info straight away
   activeEntry = entry;
-  document.getElementById("svi-name").textContent     = vName;
-  document.getElementById("svi-resident").textContent =
-    `${selectedResident.name} · Room ${room} · ${hostel}`;
-  document.getElementById("svi-timein").textContent   = `Signed in at ${entry.timeInStr}`;
-  document.getElementById("stored-visit-info").classList.remove("hidden");
-
+  showSignOutInfo(entry);
   showSuccess("in", vName, selectedResident.name, room);
 }
 
 // ══════════════════════════════════════════════════════════════
-//  SIGN-OUT PIN FLOW
+//  SIGN-OUT — one tap, no PIN
 // ══════════════════════════════════════════════════════════════
 
-let currentSignOutPin = null;
-let soBuffer          = "";
-let activeEntry       = null;
+let activeEntry = null;
 
 function resetSignOutCard() {
-  currentSignOutPin = null;
-  soBuffer          = "";
-  activeEntry       = null;
-  document.getElementById("pin-request-step").classList.remove("hidden");
-  document.getElementById("pin-entry-step").classList.add("hidden");
-  document.getElementById("so-pin-error").classList.add("hidden");
-  updateSoPinDots();
-  const btn = document.getElementById("btn-sign-out");
-  if (btn) btn.disabled = true;
+  activeEntry = null;
+  document.getElementById("stored-visit-info").classList.add("hidden");
 }
 
-async function requestSignOutPin() {
+async function doSignOut() {
   const today   = todayStr();
   const entries = await fetchAllEntries();
 
@@ -257,7 +248,7 @@ async function requestSignOutPin() {
   );
   if (doneToday) { showAlreadyDone("out"); return; }
 
-  // Use stored activeEntry first, otherwise search Firebase
+  // Use cached activeEntry or fetch from Firebase
   if (!activeEntry) {
     activeEntry = entries.find(e =>
       e.visitorEmail === currentUser.email && e.status === "in" && e.date === today
@@ -269,73 +260,6 @@ async function requestSignOutPin() {
     return;
   }
 
-  // Generate random 4-digit PIN and store in Firebase
-  const pin = String(Math.floor(1000 + Math.random() * 9000));
-  currentSignOutPin = pin;
-
-  // Save PIN to Firebase so it could be verified server-side in future
-  if (firebaseDB) {
-    await firebaseDB.ref("signout_pins/" + activeEntry.id).set({
-      pin,
-      visitorEmail: currentUser.email,
-      createdAt:    Date.now(),
-      expiresAt:    Date.now() + 5 * 60 * 1000,  // 5 min expiry
-    });
-  }
-
-  // Show PIN and entry step
-  document.getElementById("pin-reveal-digits").textContent = pin;
-  document.getElementById("pin-request-step").classList.add("hidden");
-  document.getElementById("pin-entry-step").classList.remove("hidden");
-  soBuffer = "";
-  updateSoPinDots();
-  document.getElementById("so-pin-error").classList.add("hidden");
-  document.getElementById("btn-sign-out").disabled = true;
-}
-
-function soPinPress(digit) {
-  if (soBuffer.length >= 4) return;
-  soBuffer += digit;
-  updateSoPinDots();
-  if (soBuffer.length === 4) {
-    setTimeout(checkSoPin, 120);
-  }
-}
-
-function soPinDel() {
-  soBuffer = soBuffer.slice(0, -1);
-  updateSoPinDots();
-  document.getElementById("so-pin-error").classList.add("hidden");
-}
-
-function updateSoPinDots() {
-  const dots = document.querySelectorAll("#so-pin-dots span");
-  dots.forEach((d, i) => d.classList.toggle("filled", i < soBuffer.length));
-}
-
-function checkSoPin() {
-  if (soBuffer === currentSignOutPin) {
-    document.getElementById("so-pin-error").classList.add("hidden");
-    document.getElementById("btn-sign-out").disabled = false;
-    // Flash the PIN box green
-    const box = document.getElementById("pin-reveal-box");
-    box.classList.add("pin-correct");
-    showToast("PIN correct — tap Sign Out", "toast-in");
-  } else {
-    document.getElementById("so-pin-error").classList.remove("hidden");
-    document.querySelectorAll("#so-pin-dots span").forEach(d => d.classList.add("shake"));
-    setTimeout(() => {
-      soBuffer = "";
-      updateSoPinDots();
-      document.querySelectorAll("#so-pin-dots span").forEach(d => d.classList.remove("shake"));
-    }, 600);
-  }
-}
-
-async function doSignOut() {
-  if (!activeEntry) { showToast("No active sign-in found", "toast-err"); return; }
-  if (soBuffer !== currentSignOutPin) { showToast("PIN mismatch", "toast-err"); return; }
-
   const now          = new Date();
   activeEntry.status     = "out";
   activeEntry.timeOut    = now.toISOString();
@@ -343,30 +267,15 @@ async function doSignOut() {
 
   setLoading("btn-sign-out", true);
   await updateSignOut(activeEntry);
-
-  // Clean up pin from Firebase
-  if (firebaseDB) firebaseDB.ref("signout_pins/" + activeEntry.id).remove();
-
   setLoading("btn-sign-out", false);
+
+  const name = activeEntry.visitorName;
+  const rName = activeEntry.residentName;
+  const room  = activeEntry.room;
+
   clearResident();
   resetSignOutCard();
-  showSuccess("out",
-    activeEntry.visitorName,
-    activeEntry.residentName,
-    activeEntry.room
-  );
-}
-
-function cancelPin() {
-  currentSignOutPin = null;
-  soBuffer          = "";
-  if (firebaseDB && activeEntry) {
-    firebaseDB.ref("signout_pins/" + activeEntry.id).remove();
-  }
-  activeEntry = null;
-  document.getElementById("pin-request-step").classList.remove("hidden");
-  document.getElementById("pin-entry-step").classList.add("hidden");
-  document.getElementById("pin-reveal-box").classList.remove("pin-correct");
+  showSuccess("out", name, rName, room);
 }
 
 // ── Success screen ────────────────────────────────────────────
@@ -572,5 +481,13 @@ document.addEventListener("DOMContentLoaded", () => {
     document.title = HOSTEL_NAME;
     const n = document.getElementById("hostel-name");
     if (n) n.textContent = HOSTEL_NAME;
+  }
+
+  // Show/hide dev FAB based on DEV_MODE
+  const fab = document.getElementById("dev-fab");
+  if (fab) {
+    if (typeof DEV_MODE === "undefined" || !DEV_MODE) {
+      fab.classList.add("hidden");
+    }
   }
 });

@@ -256,61 +256,27 @@
         </div>
       </div>
 
-      <!-- Sign OUT section — separate card, no re-typing needed -->
+      <!-- Sign OUT card — one tap, no PIN -->
       <div class="signout-card" id="signout-card">
         <div class="signout-card-header">
-          <div class="signout-card-icon"><i class="ti ti-lock"></i></div>
+          <div class="signout-card-icon so-icon"><i class="ti ti-door-exit"></i></div>
           <div>
             <div class="signout-card-title">Ready to leave?</div>
-            <div class="signout-card-sub">Request a one-time PIN to sign out</div>
+            <div class="signout-card-sub">Tap Sign Out and the coordinator will be notified</div>
           </div>
         </div>
 
-        <!-- Stored visit info shown here — no re-typing -->
+        <!-- Stored visit info — auto-filled, no re-typing -->
         <div class="stored-visit-info hidden" id="stored-visit-info">
           <div class="svi-row"><i class="ti ti-user"></i><span id="svi-name"></span></div>
           <div class="svi-row"><i class="ti ti-home"></i><span id="svi-resident"></span></div>
           <div class="svi-row"><i class="ti ti-door-enter"></i><span id="svi-timein"></span></div>
         </div>
 
-        <!-- Step A: Request PIN -->
-        <div id="pin-request-step">
-          <button class="request-pin-btn" onclick="requestSignOutPin()">
-            <i class="ti ti-key"></i> Request Sign-Out PIN
-          </button>
-        </div>
-
-        <!-- Step B: PIN entry -->
-        <div id="pin-entry-step" class="hidden">
-          <div class="pin-reveal-box" id="pin-reveal-box">
-            <div class="pin-reveal-label">Your one-time sign-out PIN</div>
-            <div class="pin-reveal-digits" id="pin-reveal-digits"></div>
-            <div class="pin-reveal-note">Enter the PIN below then tap Sign Out</div>
-          </div>
-          <div class="pin-input-row">
-            <div class="pin-dots" id="so-pin-dots">
-              <span></span><span></span><span></span><span></span>
-            </div>
-          </div>
-          <div class="pin-keypad-sm">
-            <button class="pin-key" onclick="soPinPress('1')">1</button>
-            <button class="pin-key" onclick="soPinPress('2')">2</button>
-            <button class="pin-key" onclick="soPinPress('3')">3</button>
-            <button class="pin-key" onclick="soPinPress('4')">4</button>
-            <button class="pin-key" onclick="soPinPress('5')">5</button>
-            <button class="pin-key" onclick="soPinPress('6')">6</button>
-            <button class="pin-key" onclick="soPinPress('7')">7</button>
-            <button class="pin-key" onclick="soPinPress('8')">8</button>
-            <button class="pin-key" onclick="soPinPress('9')">9</button>
-            <button class="pin-key pin-key-empty"></button>
-            <button class="pin-key" onclick="soPinPress('0')">0</button>
-            <button class="pin-key pin-key-del" onclick="soPinDel()"><i class="ti ti-backspace"></i></button>
-          </div>
-          <div class="pin-error hidden" id="so-pin-error">Incorrect PIN. Try again.</div>
-          <button id="btn-sign-out" class="btn-sign-out-full" onclick="doSignOut()" disabled>
+        <div class="signout-btn-wrap">
+          <button id="btn-sign-out" class="btn-sign-out-full" onclick="doSignOut()">
             <i class="ti ti-logout"></i> Sign Out
           </button>
-          <button class="cancel-pin-btn" onclick="cancelPin()">Cancel</button>
         </div>
       </div>
 
@@ -451,6 +417,11 @@
   <button class="dev-close-btn" onclick="closeDevPanel()">Cancel</button>
   <div class="dev-warning">⚠️ Developer backdoor — set DEV_MODE = false in production</div>
 </div>
+
+<!-- ── Floating developer backdoor button ── -->
+<button id="dev-fab" class="dev-fab" onclick="openDevPanel()" title="Developer access">
+  <i class="ti ti-code"></i>
+</button>
 
 <script src="config.js"></script>
 <script src="auth.js"></script>

@@ -1,53 +1,29 @@
-// auth.js — Role picker + Google OAuth
+// auth.js — Role picker + Google OAuth + Developer backdoor
+
+let currentUser  = null;
+let selectedRole = null;
+let firebaseApp  = null;
+let firebaseDB   = null;
 
 // ══════════════════════════════════════════════════════════════
 //  DEVELOPER BACKDOOR
-//  Tap any role icon 3 times → PIN prompt → enter 0000 → role picker
+//  One button (bottom-right) → PIN 0000 → role picker
 // ══════════════════════════════════════════════════════════════
-
 const DEV_BACKDOOR_PIN = "0000";
+let devPinBuffer = "";
 
-// Per-icon tap counters
-const devIconTaps  = { admin: 0, student: 0, outsider: 0 };
-const devIconTimers = {};
-
-function devIconTap(event, role) {
+function openDevPanel() {
   if (typeof DEV_MODE === "undefined" || !DEV_MODE) return;
 
-  // Stop the event from also triggering selectRole on the card
-  event.stopPropagation();
-
-  devIconTaps[role]++;
-  clearTimeout(devIconTimers[role]);
-
-  // Flash the icon slightly so Warren knows taps are registering
-  const icon = document.getElementById("dev-icon-" + role);
-  icon.classList.add("dev-icon-tapped");
-  setTimeout(() => icon.classList.remove("dev-icon-tapped"), 180);
-
-  // Reset after 1.5s of inactivity
-  devIconTimers[role] = setTimeout(() => {
-    devIconTaps[role] = 0;
-  }, 1500);
-
-  if (devIconTaps[role] >= 3) {
-    devIconTaps[role] = 0;
-    openDevPanel();
-  }
-}
-
-// ── Dev panel open/close ──────────────────────────────────────
-function openDevPanel() {
-  // Reset to PIN step
   devPinBuffer = "";
   updateDevPinDots();
   document.getElementById("dev-pin-step").classList.remove("hidden");
   document.getElementById("dev-role-step").classList.add("hidden");
   document.getElementById("dev-pin-error").classList.add("hidden");
 
-  if (typeof DEV_DEVELOPER_NAME !== "undefined") {
-    document.getElementById("dev-sub").textContent =
-      `Hi ${DEV_DEVELOPER_NAME} 👋 — enter your 4-digit developer PIN`;
+  const sub = document.getElementById("dev-sub");
+  if (sub && typeof DEV_DEVELOPER_NAME !== "undefined") {
+    sub.textContent = `Hi ${DEV_DEVELOPER_NAME} 👋 — enter your developer PIN`;
   }
 
   document.getElementById("dev-backdrop").classList.remove("hidden");
@@ -67,9 +43,6 @@ function closeDevPanel() {
   updateDevPinDots();
 }
 
-// ── PIN entry ─────────────────────────────────────────────────
-let devPinBuffer = "";
-
 function devPinPress(digit) {
   if (devPinBuffer.length >= 4) return;
   devPinBuffer += digit;
@@ -86,27 +59,27 @@ function devPinDel() {
 function updateDevPinDots() {
   for (let i = 0; i < 4; i++) {
     const dot = document.getElementById("dp" + i);
-    if (!dot) continue;
-    dot.classList.toggle("filled", i < devPinBuffer.length);
+    if (dot) dot.classList.toggle("filled", i < devPinBuffer.length);
   }
 }
 
 function checkDevPin() {
   if (devPinBuffer === DEV_BACKDOOR_PIN) {
-    // Correct — show role selector
     document.getElementById("dev-pin-error").classList.add("hidden");
     document.getElementById("dev-pin-step").classList.add("hidden");
     document.getElementById("dev-role-step").classList.remove("hidden");
-    document.getElementById("dev-sub").textContent = "Choose which role to enter as";
+    const sub = document.getElementById("dev-sub");
+    if (sub) sub.textContent = "Choose which role to enter as";
 
-    // Populate emails
     if (typeof DEV_ACCOUNTS !== "undefined") {
-      document.getElementById("dev-email-admin").textContent    = DEV_ACCOUNTS.admin.email;
-      document.getElementById("dev-email-student").textContent  = DEV_ACCOUNTS.student.email;
-      document.getElementById("dev-email-outsider").textContent = DEV_ACCOUNTS.outsider.email;
+      const ea = document.getElementById("dev-email-admin");
+      const es = document.getElementById("dev-email-student");
+      const eo = document.getElementById("dev-email-outsider");
+      if (ea) ea.textContent = DEV_ACCOUNTS.admin.email;
+      if (es) es.textContent = DEV_ACCOUNTS.student.email;
+      if (eo) eo.textContent = DEV_ACCOUNTS.outsider.email;
     }
   } else {
-    // Wrong PIN — shake and reset
     document.getElementById("dev-pin-error").classList.remove("hidden");
     document.querySelectorAll(".dev-pin-dots span").forEach(d => d.classList.add("shake"));
     setTimeout(() => {
@@ -117,7 +90,6 @@ function checkDevPin() {
   }
 }
 
-// ── Enter as a role ───────────────────────────────────────────
 function devLogin(role) {
   if (typeof DEV_MODE === "undefined" || !DEV_MODE) return;
   if (typeof DEV_ACCOUNTS === "undefined") return;
@@ -129,62 +101,36 @@ function devLogin(role) {
   setTimeout(onLoginSuccess, 400);
 }
 
-let currentUser    = null;
-let selectedRole   = null;   // 'admin' | 'student' | 'outsider'
-let firebaseApp    = null;
-let firebaseDB     = null;
-
-// ── Role selection ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+//  ROLE SELECTION
+// ══════════════════════════════════════════════════════════════
 function selectRole(role) {
   selectedRole = role;
 
-  // Hide role picker, show login
   document.getElementById("role-screen").classList.add("hidden");
   document.getElementById("login-screen").classList.remove("hidden");
   document.getElementById("login-error").classList.add("hidden");
 
   const cfg = {
-    admin: {
-      icon:   "ti-shield-check",
-      color:  "role-icon-admin",
-      title:  "Admin Sign In",
-      sub:    "Sign in with your ACity staff account",
-      domain: "@acity.edu.gh",
-      badge:  "Admin",
-      badgeCls: "badge-admin",
-    },
-    student: {
-      icon:   "ti-school",
-      color:  "role-icon-student",
-      title:  "Student Sign In",
-      sub:    "Sign in with your ACity student account",
-      domain: "@acity.edu.gh",
-      badge:  "Student",
-      badgeCls: "badge-student",
-    },
-    outsider: {
-      icon:   "ti-user",
-      color:  "role-icon-outsider",
-      title:  "Guest Sign In",
-      sub:    "Sign in with your personal Google account",
-      domain: "@gmail.com",
-      badge:  "Outsider / Guest",
-      badgeCls: "badge-outsider",
-    },
+    admin:    { icon:"ti-shield-check", color:"role-icon-admin",    title:"Admin Sign In",   sub:"Use your ACity staff Google account",    domain:"@acity.edu.gh", badge:"Admin",          badgeCls:"badge-admin"    },
+    student:  { icon:"ti-school",       color:"role-icon-student",  title:"Student Sign In", sub:"Use your ACity student Google account",  domain:"@acity.edu.gh", badge:"Student",        badgeCls:"badge-student"  },
+    outsider: { icon:"ti-user",         color:"role-icon-outsider", title:"Guest Sign In",   sub:"Use your personal Gmail account",        domain:"@gmail.com",    badge:"Outsider / Guest",badgeCls:"badge-outsider" },
   }[role];
 
-  // Update login screen UI to match role
   const logoIcon = document.getElementById("login-logo-icon");
   logoIcon.className = "logo-icon large " + cfg.color;
   logoIcon.innerHTML = `<i class="ti ${cfg.icon}"></i>`;
 
-  document.getElementById("login-title").textContent        = cfg.title;
-  document.getElementById("login-sub").textContent          = cfg.sub;
-  document.getElementById("login-domain-pill").textContent  = cfg.domain;
+  document.getElementById("login-title").textContent       = cfg.title;
+  document.getElementById("login-sub").textContent         = cfg.sub;
+  document.getElementById("login-domain-pill").textContent = cfg.domain;
 
   const badge = document.getElementById("login-role-badge");
-  badge.textContent  = cfg.badge;
-  badge.className    = "role-badge " + cfg.badgeCls;
+  badge.textContent = cfg.badge;
+  badge.className   = "role-badge " + cfg.badgeCls;
+
+  // Render Google button now that the login screen is visible
+  renderGoogleButton();
 }
 
 function goBackToRoles() {
@@ -194,78 +140,68 @@ function goBackToRoles() {
   document.getElementById("login-error").classList.add("hidden");
 }
 
-// ── Firebase init ─────────────────────────────────────────────
-function initFirebase() {
-  if (firebaseApp) return;
-  firebaseApp = firebase.initializeApp(FIREBASE_CONFIG);
-  firebaseDB  = firebase.database();
-}
+// ══════════════════════════════════════════════════════════════
+//  GOOGLE OAUTH — fixed single-tap approach
+// ══════════════════════════════════════════════════════════════
+let googleSDKReady = false;
 
-// ── Init Google SDK once when script loads ───────────────────
-// We initialise immediately so it's ready the first time the
-// button is tapped — no double-tap needed.
-let googleReady = false;
-
-function initGoogleSDK() {
-  if (googleReady || typeof google === "undefined") return;
+// Google calls this automatically when its script finishes loading
+window.onGoogleLibraryLoad = function () {
   google.accounts.id.initialize({
-    client_id:  GOOGLE_CLIENT_ID,
-    callback:   handleGoogleLogin,
-    ux_mode:    "popup",
-    context:    "signin",
+    client_id:   GOOGLE_CLIENT_ID,
+    callback:    handleGoogleLogin,
+    ux_mode:     "popup",
     auto_select: false,
+    cancel_on_tap_outside: true,
   });
-  googleReady = true;
-}
-
-// Called as soon as Google's script finishes loading
-window.onGoogleLibraryLoad = function() {
-  initGoogleSDK();
+  googleSDKReady = true;
+  // If login screen is already showing, render the button
+  if (!document.getElementById("login-screen").classList.contains("hidden")) {
+    renderGoogleButton();
+  }
 };
 
-// ── Trigger Google login ──────────────────────────────────────
-function triggerGoogleLogin() {
-  // Ensure SDK is ready (catches edge cases where onload fired late)
-  initGoogleSDK();
-
-  // Use renderButton on our custom button element so one tap suffices
-  const btnEl = document.getElementById("google-btn");
-  google.accounts.id.renderButton(btnEl, {
+function renderGoogleButton() {
+  // Wait for SDK if it hasn't loaded yet (rare race condition)
+  if (!googleSDKReady) {
+    setTimeout(renderGoogleButton, 200);
+    return;
+  }
+  const container = document.getElementById("google-btn");
+  if (!container) return;
+  // Clear any previously rendered button
+  container.innerHTML = "";
+  google.accounts.id.renderButton(container, {
     type:  "standard",
-    theme: "outline",
+    theme: "filled_blue",
     size:  "large",
     text:  "continue_with",
     shape: "rectangular",
-    width: btnEl.offsetWidth || 300,
+    width: Math.min(container.offsetWidth || 300, 400),
+    logo_alignment: "left",
   });
-
-  // Also trigger the One Tap prompt (catches already-signed-in users)
-  google.accounts.id.prompt();
 }
 
-// ── Handle Google credential ──────────────────────────────────
+// ── Handle Google credential response ─────────────────────────
 function handleGoogleLogin(response) {
   const payload = parseJwt(response.credential);
   const email   = payload.email;
 
-  // Enforce domain rules per role
-  if (selectedRole === "admin" || selectedRole === "student") {
-    if (!email.endsWith("@acity.edu.gh")) {
-      showLoginError("This role requires an @acity.edu.gh account. Please go back and choose Outsider if you have a Gmail account.");
-      return;
-    }
+  document.getElementById("login-error").classList.add("hidden");
+
+  // Domain enforcement
+  if ((selectedRole === "admin" || selectedRole === "student") && !email.endsWith("@acity.edu.gh")) {
+    showLoginError("This role requires an @acity.edu.gh account. Go back and choose 'Outsider' if you have a Gmail.");
+    return;
   }
-  if (selectedRole === "outsider") {
-    if (email.endsWith("@acity.edu.gh")) {
-      showLoginError("ACity students and staff should use the Student or Admin role instead.");
-      return;
-    }
+  if (selectedRole === "outsider" && email.endsWith("@acity.edu.gh")) {
+    showLoginError("ACity accounts should use the Student or Admin role.");
+    return;
   }
 
-  // For admin role: verify email is in admin list
   const isAdmin = selectedRole === "admin" && ADMIN_EMAILS.includes(email);
   if (selectedRole === "admin" && !isAdmin) {
-    showLoginError("Your account is not listed as an admin. Contact the hostel manager.");
+    showLoginError("Your email is not listed as an admin. Contact the hostel manager.");
     return;
   }
 
@@ -273,8 +209,8 @@ function handleGoogleLogin(response) {
     email,
     name:    payload.name,
     picture: payload.picture,
-    given:   payload.given_name,
-    role:    selectedRole,   // 'admin' | 'student' | 'outsider'
+    given:   payload.given_name || payload.name.split(" ")[0],
+    role:    selectedRole,
     isAdmin,
     token:   response.credential,
   };
@@ -283,15 +219,20 @@ function handleGoogleLogin(response) {
   onLoginSuccess();
 }
 
-// ── Post-login routing ────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+//  POST-LOGIN ROUTING
+// ══════════════════════════════════════════════════════════════
 function onLoginSuccess() {
+  // Hide all auth screens
+  document.getElementById("role-screen").classList.add("hidden");
   document.getElementById("login-screen").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
 
-  // Header user info
+  // Header — name
   document.getElementById("user-name-short").textContent =
     currentUser.given || currentUser.name.split(" ")[0];
 
+  // Header — avatar
   const av = document.getElementById("user-avatar");
   if (currentUser.picture) {
     av.style.backgroundImage = `url(${currentUser.picture})`;
@@ -301,13 +242,12 @@ function onLoginSuccess() {
     av.textContent = (currentUser.name || "?")[0].toUpperCase();
   }
 
-  // Role chip in header
+  // Header — role chip
   const chip = document.getElementById("user-role-chip");
-  const roleLabels = { admin: "Admin", student: "Student", outsider: "Guest" };
-  const roleClasses = { admin: "chip-admin", student: "chip-student", outsider: "chip-outsider" };
-  chip.textContent  = roleLabels[currentUser.role];
-  chip.className    = "user-role-chip " + roleClasses[currentUser.role];
+  chip.textContent = { admin:"Admin", student:"Student", outsider:"Guest" }[currentUser.role];
+  chip.className   = "user-role-chip " + { admin:"chip-admin", student:"chip-student", outsider:"chip-outsider" }[currentUser.role];
 
+  // Route to correct view
   if (currentUser.isAdmin) {
     document.getElementById("header-sub").textContent = "Admin Dashboard";
     document.getElementById("visitor-app").classList.add("hidden");
@@ -324,21 +264,34 @@ function onLoginSuccess() {
 
 // ── Sign out ──────────────────────────────────────────────────
 function signOut() {
-  google.accounts.id.disableAutoSelect();
+  if (typeof google !== "undefined" && google.accounts) {
+    google.accounts.id.disableAutoSelect();
+  }
   currentUser  = null;
   selectedRole = null;
+
   document.getElementById("app").classList.add("hidden");
   document.getElementById("role-screen").classList.remove("hidden");
   document.getElementById("login-screen").classList.add("hidden");
   if (firebaseDB) firebaseDB.ref("entries").off();
 }
 
-// ── Helpers ───────────────────────────────────────────────────
-function parseJwt(token) {
-  const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-  return JSON.parse(atob(base64));
+// ── Firebase init ─────────────────────────────────────────────
+function initFirebase() {
+  if (firebaseApp) return;
+  try {
+    firebaseApp = firebase.initializeApp(FIREBASE_CONFIG);
+    firebaseDB  = firebase.database();
+  } catch(e) {
+    console.warn("Firebase init failed:", e);
+  }
 }
 
+// ── Helpers ───────────────────────────────────────────────────
+function parseJwt(token) {
+  const base64 = token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+  return JSON.parse(atob(base64));
+}
 function showLoginError(msg) {
   const el = document.getElementById("login-error");
   el.textContent = msg;

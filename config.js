@@ -1,14 +1,11 @@
 // ============================================================
 //  HOSTEL REGISTER — Configuration
-//  Fill in ALL values below after following the README setup
+//  Fill in GOOGLE_CLIENT_ID, FIREBASE_CONFIG, SHEET_WEBAPP_URL
+//  and SHEET_URL after following the README setup steps.
 // ============================================================
 
-// Google OAuth Client ID
-// (from Google Cloud Console → APIs & Services → Credentials)
 const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
 
-// Firebase config
-// (from Firebase Console → Project Settings → Your apps → SDK setup)
 const FIREBASE_CONFIG = {
   apiKey:            "YOUR_FIREBASE_API_KEY",
   authDomain:        "YOUR_PROJECT.firebaseapp.com",
@@ -19,22 +16,20 @@ const FIREBASE_CONFIG = {
   appId:             "YOUR_APP_ID",
 };
 
-// Google Apps Script Web App URL
-// (for writing to Google Sheets)
 const SHEET_WEBAPP_URL = "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE";
+const SHEET_URL        = "YOUR_GOOGLE_SHEET_URL_HERE";
+const HOSTEL_NAME      = "Academic City Hostel";
 
-// Your Google Sheet URL (for the "Open sheet" link)
-const SHEET_URL = "YOUR_GOOGLE_SHEET_URL_HERE";
-
-// Hostel name shown in the header
-const HOSTEL_NAME = "Academic City Hostel";
-
-// Admin emails — these accounts see the coordinator dashboard
-// Everyone else with @acity.edu.gh sees the visitor form
+// ── Admin emails ─────────────────────────────────────────────
+// Accounts that see the coordinator dashboard when they log in
 const ADMIN_EMAILS = [
-  "admin@acity.edu.gh",
-  // add more admin emails here
+  "warren.admin@acity.edu.gh",   // Warren's test admin account
+  // Add real admin emails here:
+  // "coordinator@acity.edu.gh",
 ];
 
-// PIN to access coordinator dashboard (as a backup if needed)
-const COORDINATOR_PIN = "1234";
+// ── Developer / test mode ────────────────────────────────────
+// When true, a "Use test account" button appears on the login
+// screen so you can bypass Google login for testing.
+// Set to false before going live.
+const DEV_MODE = true;

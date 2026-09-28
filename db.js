@@ -1,28 +1,56 @@
 // db.js — Firebase Realtime Database + Google Sheets sync
 
-// ── Residents directory (stored in Firebase) ──────────────────
-// Format: { email: { name, room, email } }
+// ── Residents cache ───────────────────────────────────────────
 let residentsCache = {};
 
 async function loadResidents() {
   if (!firebaseDB) return;
   const snap = await firebaseDB.ref("residents").once("value");
   residentsCache = snap.val() || {};
+
+  // If empty, seed demo residents automatically
+  if (Object.keys(residentsCache).length === 0) {
+    await seedDemoResidents();
+  }
 }
 
-function searchResidents(query) {
-  if (!query || query.length < 2) {
-    document.getElementById("resident-dropdown").classList.add("hidden");
-    return;
-  }
-  const q = query.toLowerCase();
-  const matches = Object.values(residentsCache).filter(r =>
-    r.name.toLowerCase().includes(q) ||
-    r.email.toLowerCase().includes(q) ||
-    (r.room && r.room.toLowerCase().includes(q))
-  ).slice(0, 6);
+// ── 10 random demo residents ──────────────────────────────────
+async function seedDemoResidents() {
+  const demo = [
+    { name:"Efua Asante",     email:"efua.asante@acity.edu.gh",     room:"A101", hostel:"Hostel A" },
+    { name:"Kofi Mensah",     email:"kofi.mensah@acity.edu.gh",     room:"A204", hostel:"Hostel A" },
+    { name:"Abena Darko",     email:"abena.darko@acity.edu.gh",     room:"B112", hostel:"Hostel B" },
+    { name:"Kwame Boateng",   email:"kwame.boateng@acity.edu.gh",   room:"B305", hostel:"Hostel B" },
+    { name:"Ama Owusu",       email:"ama.owusu@acity.edu.gh",       room:"A310", hostel:"Hostel A" },
+    { name:"Yaw Adjei",       email:"yaw.adjei@acity.edu.gh",       room:"B208", hostel:"Hostel B" },
+    { name:"Akosua Frimpong", email:"akosua.frimpong@acity.edu.gh", room:"A115", hostel:"Hostel A" },
+    { name:"Nana Agyeman",    email:"nana.agyeman@acity.edu.gh",    room:"B401", hostel:"Hostel B" },
+    { name:"Adwoa Asare",     email:"adwoa.asare@acity.edu.gh",     room:"A222", hostel:"Hostel A" },
+    { name:"Kojo Amponsah",   email:"kojo.amponsah@acity.edu.gh",   room:"B119", hostel:"Hostel B" },
+  ];
 
+  for (const r of demo) {
+    const key = r.email.replace(/[.@]/g, "_");
+    await firebaseDB.ref("residents/" + key).set(r);
+    residentsCache[key] = r;
+  }
+  console.log("Demo residents seeded ✓");
+}
+
+// ── Resident search ───────────────────────────────────────────
+function searchResidents(query) {
   const dd = document.getElementById("resident-dropdown");
+  if (!query || query.length < 1) { dd.classList.add("hidden"); return; }
+
+  const q = query.toLowerCase();
+  const matches = Object.values(residentsCache)
+    .filter(r =>
+      r.name.toLowerCase().includes(q) ||
+      r.email.toLowerCase().includes(q) ||
+      (r.room||"").toLowerCase().includes(q)
+    )
+    .slice(0, 6);
+
   if (!matches.length) {
     dd.innerHTML = `<div class="dd-empty">No residents found</div>`;
     dd.classList.remove("hidden");
@@ -33,7 +61,7 @@ function searchResidents(query) {
       <div class="dd-avatar">${initials(r.name)}</div>
       <div class="dd-info">
         <strong>${r.name}</strong>
-        <span>Room ${r.room} · ${r.email}</span>
+        <span>Room ${r.room} · ${r.hostel||""} · ${r.email}</span>
       </div>
     </div>
   `).join("");
@@ -46,11 +74,20 @@ function selectResident(encoded) {
   selectedResident = JSON.parse(decodeURIComponent(encoded));
   document.getElementById("r-search").value = "";
   document.getElementById("resident-dropdown").classList.add("hidden");
-
   document.getElementById("sel-avatar").textContent = initials(selectedResident.name);
   document.getElementById("sel-name").textContent   = selectedResident.name;
-  document.getElementById("sel-room").textContent   = "Room " + selectedResident.room;
+  document.getElementById("sel-room").textContent   = "Room " + selectedResident.room +
+    (selectedResident.hostel ? " · " + selectedResident.hostel : "");
   document.getElementById("selected-resident").classList.remove("hidden");
+
+  // Auto-fill room + hostel fields from the selected resident
+  const roomEl = document.getElementById("room-input");
+  if (roomEl && selectedResident.room) roomEl.value = selectedResident.room;
+
+  if (selectedResident.hostel) {
+    const radio = document.querySelector(`input[name="hostel"][value="${selectedResident.hostel}"]`);
+    if (radio) { radio.checked = true; onHostelChange(); }
+  }
 }
 
 function clearResident() {
@@ -59,107 +96,98 @@ function clearResident() {
   document.getElementById("r-search").value = "";
 }
 
-// ── Write a sign-in / sign-out entry ─────────────────────────
-async function writeEntry(entry) {
-  // 1. Write to Firebase (real-time — admins see it instantly)
-  if (firebaseDB) {
-    await firebaseDB.ref("entries/" + entry.id).set(entry);
+// Close dropdown when clicking outside
+document.addEventListener("click", e => {
+  const dd = document.getElementById("resident-dropdown");
+  if (dd && !dd.contains(e.target) && e.target.id !== "r-search") {
+    dd.classList.add("hidden");
   }
+});
 
-  // 2. Write to Google Sheets (permanent record)
+// ── Write entry (sign-in) ─────────────────────────────────────
+async function writeEntry(entry) {
+  if (firebaseDB) {
+    // Store without idPhoto in the main entry (photo goes separately)
+    const { idPhoto, ...entryNoPhoto } = entry;
+    await firebaseDB.ref("entries/" + entry.id).set(entryNoPhoto);
+    // Store photo separately so it doesn't bloat the entries list
+    if (idPhoto) {
+      await firebaseDB.ref("id_photos/" + entry.id).set({ photo: idPhoto, email: entry.visitorEmail });
+    }
+  }
+  // Write to Sheets (no photo)
   if (typeof SHEET_WEBAPP_URL === "string" && SHEET_WEBAPP_URL.startsWith("https://")) {
     const params = new URLSearchParams({
-      action:        "append",
-      id:            entry.id,
-      date:          entry.date,
-      visitorName:   entry.visitorName,
-      visitorEmail:  entry.visitorEmail,
-      visitorPhone:  entry.visitorPhone  || "",
-      residentName:  entry.residentName,
-      residentEmail: entry.residentEmail || "",
-      room:          entry.room,
-      timeIn:        entry.timeInStr,
-      timeOut:       entry.timeOutStr   || "",
-      status:        entry.status,
+      action:"append", id:entry.id, date:entry.date,
+      visitorName:entry.visitorName, visitorEmail:entry.visitorEmail,
+      visitorPhone:entry.visitorPhone||"", visitorRole:entry.visitorRole||"",
+      hostel:entry.hostel||"", residentName:entry.residentName,
+      residentEmail:entry.residentEmail||"", room:entry.room,
+      idType:entry.idType||"", timeIn:entry.timeInStr, status:"in",
     });
-    try {
-      await fetch(SHEET_WEBAPP_URL + "?" + params.toString());
-    } catch { /* silent — Firebase already has the data */ }
+    try { await fetch(SHEET_WEBAPP_URL + "?" + params); } catch {}
   }
 }
 
-// ── Update sign-out on existing entry ────────────────────────
+// ── Update sign-out — updates existing row, NOT a new entry ───
 async function updateSignOut(entry) {
-  // Firebase
   if (firebaseDB) {
+    // Update just the sign-out fields on the existing entry
     await firebaseDB.ref("entries/" + entry.id).update({
       status:     "out",
       timeOut:    entry.timeOut,
       timeOutStr: entry.timeOutStr,
     });
   }
-
-  // Sheets
   if (typeof SHEET_WEBAPP_URL === "string" && SHEET_WEBAPP_URL.startsWith("https://")) {
     const params = new URLSearchParams({
-      action:      "signout",
-      id:          entry.id,
-      date:        entry.date,
-      visitorName: entry.visitorName,
-      room:        entry.room,
-      timeOut:     entry.timeOutStr,
+      action:"signout", id:entry.id, date:entry.date,
+      visitorName:entry.visitorName, room:entry.room, timeOut:entry.timeOutStr,
     });
-    try { await fetch(SHEET_WEBAPP_URL + "?" + params.toString()); }
-    catch { /* silent */ }
+    try { await fetch(SHEET_WEBAPP_URL + "?" + params); } catch {}
   }
 }
 
-// ── Listen for new entries (admin real-time feed) ─────────────
+// ── Listen for all today's entries ───────────────────────────
 function listenForEntries(callback) {
   if (!firebaseDB) return;
   const today = todayStr();
   firebaseDB.ref("entries")
-    .orderByChild("date")
-    .equalTo(today)
+    .orderByChild("date").equalTo(today)
     .on("value", snap => {
       const raw = snap.val() || {};
-      const entries = Object.values(raw).sort((a, b) =>
-        new Date(b.timeIn) - new Date(a.timeIn)
-      );
-      callback(entries);
+      // Attach idPhoto from cache if available for rendering
+      const entries = Object.values(raw)
+        .sort((a,b) => new Date(b.timeIn) - new Date(a.timeIn));
+      // Fetch photos for entries that have them
+      Promise.all(entries.map(async e => {
+        if (!e.idPhoto && firebaseDB) {
+          const ps = await firebaseDB.ref("id_photos/" + e.id).once("value");
+          const pd = ps.val();
+          if (pd) e.idPhoto = pd.photo;
+        }
+        return e;
+      })).then(callback);
     });
 }
 
-// ── Listen for NEW entries only (for notifications) ───────────
-let lastKnownCount = -1;
 function listenForNewEntries(onNew) {
   if (!firebaseDB) return;
   const today = todayStr();
-  firebaseDB.ref("entries")
-    .orderByChild("date")
-    .equalTo(today)
-    .on("child_changed", snap => {
-      const entry = snap.val();
-      if (lastKnownCount >= 0) onNew(entry, "changed");
-    });
-  firebaseDB.ref("entries")
-    .orderByChild("date")
-    .equalTo(today)
-    .on("child_added", snap => {
-      if (lastKnownCount < 0) return; // skip initial load
-      const entry = snap.val();
-      onNew(entry, "added");
+  firebaseDB.ref("entries").orderByChild("date").equalTo(today)
+    .on("child_changed", snap => onNew(snap.val(), "changed"));
+  firebaseDB.ref("entries").orderByChild("date").equalTo(today)
+    .on("child_added",   snap => {
+      if (lastKnownCount < 0) return;
+      onNew(snap.val(), "added");
     });
 }
 
-// ── Fetch all entries (for coordinator, one-time) ─────────────
 async function fetchAllEntries() {
   if (!firebaseDB) return [];
   const today = todayStr();
   const snap  = await firebaseDB.ref("entries")
-    .orderByChild("date")
-    .equalTo(today)
-    .once("value");
+    .orderByChild("date").equalTo(today).once("value");
   const raw = snap.val() || {};
-  return Object.values(raw).sort((a, b) => new Date(b.timeIn) - new Date(a.timeIn));
+  return Object.values(raw).sort((a,b) => new Date(b.timeIn) - new Date(a.timeIn));
 }

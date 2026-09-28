@@ -138,7 +138,7 @@
       <div class="hero">
         <div class="hero-icon" id="visitor-hero-icon"><i class="ti ti-door-enter"></i></div>
         <h1 class="hero-title">Welcome, <span id="visitor-first-name">there</span></h1>
-        <p class="hero-sub">Sign in on arrival — you'll need a PIN to sign out</p>
+        <p class="hero-sub">Sign in when you arrive, sign out when you leave</p>
       </div>
 
       <div class="form-card">
@@ -261,18 +261,30 @@
           <!-- Photo upload — appears after selecting ID type -->
           <div class="field hidden" id="id-upload-field">
             <label id="id-upload-label">Upload photo of your ID <span class="req">*</span></label>
-            <div class="id-upload-zone" id="id-upload-zone" onclick="document.getElementById('id-file-input').click()">
-              <input type="file" id="id-file-input" accept="image/*" capture="environment"
-                     style="display:none" onchange="onIdPhotoSelected(this)" />
-              <div class="id-upload-placeholder" id="id-upload-placeholder">
+
+            <!-- Hidden file inputs — one for camera, one for gallery -->
+            <input type="file" id="id-file-camera"  accept="image/*" capture="environment" style="display:none" onchange="onIdPhotoSelected(this)" />
+            <input type="file" id="id-file-gallery" accept="image/*" style="display:none" onchange="onIdPhotoSelected(this)" />
+
+            <!-- Upload buttons -->
+            <div class="id-upload-btns" id="id-upload-btns">
+              <button class="id-upload-btn" onclick="document.getElementById('id-file-camera').click()">
                 <i class="ti ti-camera"></i>
-                <span>Tap to take photo or choose from gallery</span>
-              </div>
-              <img id="id-preview" class="id-preview hidden" alt="ID preview" />
+                <span>Take photo</span>
+              </button>
+              <button class="id-upload-btn" onclick="document.getElementById('id-file-gallery').click()">
+                <i class="ti ti-photo"></i>
+                <span>Choose from gallery</span>
+              </button>
             </div>
-            <button class="id-retake-btn hidden" id="id-retake-btn" onclick="retakeIdPhoto()">
-              <i class="ti ti-refresh"></i> Retake photo
-            </button>
+
+            <!-- Preview after photo selected -->
+            <div class="id-preview-wrap hidden" id="id-preview-wrap">
+              <img id="id-preview" class="id-preview" alt="ID preview" />
+              <button class="id-retake-btn" id="id-retake-btn" onclick="retakeIdPhoto()">
+                <i class="ti ti-refresh"></i> Retake / Change
+              </button>
+            </div>
           </div>
         </div>
 
@@ -317,6 +329,18 @@
     <!-- Stacked notification area -->
     <div id="notif-stack" class="notif-stack"></div>
 
+    <!-- Admin tab bar -->
+    <div class="admin-tabs">
+      <button class="admin-tab active" id="tab-dashboard" onclick="switchAdminTab('dashboard')">
+        <i class="ti ti-layout-dashboard"></i> Dashboard
+      </button>
+      <button class="admin-tab" id="tab-residents" onclick="switchAdminTab('residents')">
+        <i class="ti ti-users"></i> Residents
+      </button>
+    </div>
+
+    <!-- Dashboard panel -->
+    <div id="admin-dashboard-panel">
     <div class="container">
       <div class="coord-top">
         <div>
@@ -368,8 +392,68 @@
           <span>Sign-ins will appear here in real time</span>
         </div>
       </div>
-    </div>
-  </div>
+    </div><!-- /container -->
+    </div><!-- /admin-dashboard-panel -->
+
+    <!-- ── RESIDENTS MANAGEMENT PANEL ── -->
+    <div id="admin-residents-panel" class="hidden">
+      <div class="container">
+        <div class="coord-top">
+          <div>
+            <h1 class="coord-title">Residents</h1>
+            <p class="coord-sub">Manage who can be found in the visitor search</p>
+          </div>
+        </div>
+
+        <div class="add-resident-card">
+          <div class="add-resident-title"><i class="ti ti-user-plus"></i> Add a resident</div>
+          <div class="field">
+            <label for="res-add-name">Full name</label>
+            <input id="res-add-name" type="text" placeholder="e.g. Efua Asante" />
+          </div>
+          <div class="field">
+            <label for="res-add-email">ACity email</label>
+            <input id="res-add-email" type="email" placeholder="efua.asante@acity.edu.gh" />
+          </div>
+          <div class="field-row-two">
+            <div class="field">
+              <label for="res-add-room">Room</label>
+              <input id="res-add-room" type="text" placeholder="e.g. A101" />
+            </div>
+            <div class="field">
+              <label for="res-add-hostel">Hostel</label>
+              <select id="res-add-hostel" class="field-select">
+                <option value="">Select…</option>
+                <option value="Hostel A">Hostel A</option>
+                <option value="Hostel B">Hostel B</option>
+              </select>
+            </div>
+          </div>
+          <button class="add-resident-btn" onclick="adminAddResident()">
+            <i class="ti ti-plus"></i> Add Resident
+          </button>
+          <div id="add-resident-msg" class="add-resident-msg hidden"></div>
+        </div>
+
+        <div class="field" style="margin-bottom:16px">
+          <div class="search-wrap">
+            <i class="ti ti-search search-icon"></i>
+            <input id="res-search" type="text" placeholder="Search residents…"
+              oninput="filterResidentList(this.value)" />
+          </div>
+        </div>
+
+        <div id="resident-list" class="resident-list">
+          <div class="empty-state">
+            <i class="ti ti-users"></i>
+            <p>No residents yet</p>
+            <span>Add residents above</span>
+          </div>
+        </div>
+      </div>
+    </div><!-- /admin-residents-panel -->
+
+  </div><!-- /admin-app -->
 
 </div><!-- /app -->
 

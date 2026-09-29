@@ -202,38 +202,36 @@
 
         <div class="form-divider"></div>
 
-        <!-- ── SECTION 3: Who to visit ── -->
+        <!-- ── SECTION 3: Who to visit — room first, then resident ── -->
         <div class="form-section">
           <div class="form-section-head">
             <div class="form-section-icon amber"><i class="ti ti-home"></i></div>
             <span>Who are you visiting?</span>
           </div>
 
+          <!-- Step 1: enter room number -->
           <div class="field">
-            <label for="r-search">Resident name or email</label>
+            <label for="room-input">Room number <span class="req">*</span></label>
             <div class="search-wrap">
-              <i class="ti ti-search search-icon"></i>
-              <input id="r-search" type="text" placeholder="Type a name or @acity email…"
-                autocomplete="off" oninput="searchResidents(this.value)" />
+              <i class="ti ti-door search-icon"></i>
+              <input id="room-input" type="text" placeholder="e.g. D11, A101, B203"
+                autocomplete="off" oninput="onRoomInput(this.value)" />
             </div>
-            <div id="resident-dropdown" class="dropdown hidden"></div>
           </div>
 
+          <!-- Step 2: residents in that room appear as option cards -->
+          <div id="room-residents" class="room-residents hidden"></div>
+
+          <!-- Selected resident chip -->
           <div id="selected-resident" class="selected-resident hidden">
             <div class="selected-info">
               <div class="selected-avatar" id="sel-avatar"></div>
               <div>
                 <strong id="sel-name"></strong>
                 <span id="sel-room"></span>
-                <span id="sel-hostel" class="sel-hostel-tag"></span>
               </div>
             </div>
             <button class="clear-btn" onclick="clearResident()"><i class="ti ti-x"></i></button>
-          </div>
-
-          <div class="field">
-            <label for="room-input">Room number <span class="req">*</span></label>
-            <input id="room-input" type="text" placeholder="e.g. A101, B203" />
           </div>
         </div>
 

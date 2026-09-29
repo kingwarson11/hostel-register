@@ -37,53 +37,69 @@ async function seedDemoResidents() {
   console.log("Demo residents seeded ✓");
 }
 
-// ── Resident search ───────────────────────────────────────────
-function searchResidents(query) {
-  const dd = document.getElementById("resident-dropdown");
-  if (!query || query.length < 1) { dd.classList.add("hidden"); return; }
+// ── Room input → show residents in that room ─────────────────
+function onRoomInput(value) {
+  const roomBox = document.getElementById("room-residents");
+  const q = value.trim().toUpperCase();
+  if (!q || q.length < 2) { roomBox.classList.add("hidden"); return; }
 
-  const q = query.toLowerCase();
+  // Find all residents whose room starts with / matches the input
   const matches = Object.values(residentsCache)
-    .filter(r =>
-      r.name.toLowerCase().includes(q) ||
-      r.email.toLowerCase().includes(q) ||
-      (r.room||"").toLowerCase().includes(q)
-    )
-    .slice(0, 6);
+    .filter(r => (r.room||"").toUpperCase().startsWith(q) ||
+                 (r.room||"").toUpperCase() === q);
 
   if (!matches.length) {
-    dd.innerHTML = `<div class="dd-empty">No residents found</div>`;
-    dd.classList.remove("hidden");
+    roomBox.innerHTML = `<div class="room-no-match">
+      <i class="ti ti-mood-empty"></i> No residents found in room "${q}"
+    </div>`;
+    roomBox.classList.remove("hidden");
     return;
   }
-  dd.innerHTML = matches.map(r => `
-    <div class="dd-item" onclick="selectResident('${encodeURIComponent(JSON.stringify(r))}')">
-      <div class="dd-avatar">${initials(r.name)}</div>
-      <div class="dd-info">
+
+  roomBox.innerHTML = matches.map(r => `
+    <button class="room-resident-option" onclick="selectResident('${encodeURIComponent(JSON.stringify(r))}')">
+      <div class="rro-avatar">${initials(r.name)}</div>
+      <div class="rro-info">
         <strong>${r.name}</strong>
-        <span>Room ${r.room} · ${r.hostel||""} · ${r.email}</span>
+        <span>Room ${r.room}${r.hostel ? " · " + r.hostel : ""}</span>
       </div>
-    </div>
+      <div class="rro-select"><i class="ti ti-chevron-right"></i></div>
+    </button>
   `).join("");
-  dd.classList.remove("hidden");
+  roomBox.classList.remove("hidden");
+}
+
+// ── Fallback name search (still used by admin add flow) ───────
+function searchResidents(query) {
+  if (!query || query.length < 2) return [];
+  const q = query.toLowerCase();
+  return Object.values(residentsCache).filter(r =>
+    r.name.toLowerCase().includes(q) ||
+    r.email.toLowerCase().includes(q)
+  ).slice(0, 8);
 }
 
 let selectedResident = null;
 
 function selectResident(encoded) {
   selectedResident = JSON.parse(decodeURIComponent(encoded));
-  document.getElementById("r-search").value = "";
-  document.getElementById("resident-dropdown").classList.add("hidden");
+
+  // Hide the room options list
+  const roomBox = document.getElementById("room-residents");
+  if (roomBox) roomBox.classList.add("hidden");
+
+  // Show selected chip
   document.getElementById("sel-avatar").textContent = initials(selectedResident.name);
   document.getElementById("sel-name").textContent   = selectedResident.name;
-  document.getElementById("sel-room").textContent   = "Room " + selectedResident.room +
-    (selectedResident.hostel ? " · " + selectedResident.hostel : "");
+  document.getElementById("sel-room").textContent   =
+    "Room " + selectedResident.room + (selectedResident.hostel ? " · " + selectedResident.hostel : "");
   document.getElementById("selected-resident").classList.remove("hidden");
 
-  // Auto-fill room + hostel fields from the selected resident
+  // Auto-fill room input with the exact room
   const roomEl = document.getElementById("room-input");
   if (roomEl && selectedResident.room) roomEl.value = selectedResident.room;
 
+  // Auto-select hostel radio
   if (selectedResident.hostel) {
     const radio = document.querySelector(`input[name="hostel"][value="${selectedResident.hostel}"]`);
     if (radio) { radio.checked = true; onHostelChange(); }
@@ -93,7 +109,11 @@ function selectResident(encoded) {
 function clearResident() {
   selectedResident = null;
   document.getElementById("selected-resident").classList.add("hidden");
-  document.getElementById("r-search").value = "";
+  // Reset room input and hide options
+  const roomEl  = document.getElementById("room-input");
+  const roomBox = document.getElementById("room-residents");
+  if (roomEl)  roomEl.value = "";
+  if (roomBox) roomBox.classList.add("hidden");
 }
 
 // Close dropdown when clicking outside

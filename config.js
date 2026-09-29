@@ -20,8 +20,8 @@ const FIREBASE_CONFIG = {
   measurementId: "G-TS1Q533JL5"
 };
 
-const SHEET_WEBAPP_URL = "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE";
-const SHEET_URL        = "YOUR_GOOGLE_SHEET_URL_HERE";
+const SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyz6LcqR78rPzdBtdpt4wwjBepyyf05JLQPHdhxtQV_r-aKeoq8feVPjbNwohNVinA3vw/exec";
+const SHEET_URL        = "https://docs.google.com/spreadsheets/d/1Umh1wKNRiLPJw7Q7ow5TH-unLORYpzvQq2rVzf-KJz8/edit?gid=0#gid=0";
 const HOSTEL_NAME      = "Academic City Hostel";
 
 // ── Admin emails ─────────────────────────────────────────────

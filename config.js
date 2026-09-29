@@ -4,7 +4,7 @@
 //  and SHEET_URL after following the README setup steps.
 // ============================================================
 
-const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = "913153666464-mlmcpbh50v225ioemrkfpcfa7h7ib92b.apps.googleusercontent.com";
 
 const FIREBASE_CONFIG = {
   apiKey:            "YOUR_FIREBASE_API_KEY",

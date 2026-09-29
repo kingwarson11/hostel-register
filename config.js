@@ -3,17 +3,21 @@
 //  Fill in GOOGLE_CLIENT_ID, FIREBASE_CONFIG, SHEET_WEBAPP_URL
 //  and SHEET_URL after following the README setup steps.
 // ============================================================
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+
 
 const GOOGLE_CLIENT_ID = "913153666464-mlmcpbh50v225ioemrkfpcfa7h7ib92b.apps.googleusercontent.com";
 
 const FIREBASE_CONFIG = {
-  apiKey:            "YOUR_FIREBASE_API_KEY",
-  authDomain:        "YOUR_PROJECT.firebaseapp.com",
-  databaseURL:       "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID",
+  apiKey: "AIzaSyDV4NitiX5jlRblymjkmg3i1iiIXFQSb2I",
+  authDomain: "hostel-register-77a28.firebaseapp.com",
+  databaseURL: "https://hostel-register-77a28-default-rtdb.firebaseio.com",
+  projectId: "hostel-register-77a28",
+  storageBucket: "hostel-register-77a28.firebasestorage.app",
+  messagingSenderId: "575123455194",
+  appId: "1:575123455194:web:3e0bb391df54090437b9e3",
+  measurementId: "G-TS1Q533JL5"
 };
 
 const SHEET_WEBAPP_URL = "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE";
@@ -25,6 +29,8 @@ const HOSTEL_NAME      = "Academic City Hostel";
 const ADMIN_EMAILS = [
   "warren.admin@acity.edu.gh",   // Warren's test admin account
   // Add real admin emails here:
+  "esonwarr@gmail.com"
+  "esonuwarren11@gmail.com"
   // "coordinator@acity.edu.gh",
 ];
 

@@ -6,12 +6,12 @@ let firebaseApp  = null;
 let firebaseDB   = null;
 
 // ══════════════════════════════════════════════════════════════
-//  TEST ACCOUNTS (Warren's fake accounts for each role)
-//  Set DEV_MODE = false in config.js to hide these
+//  TEST ACCOUNTS — Warren's bypass for testing
+//  Shown only when DEV_MODE = true in config.js
 // ══════════════════════════════════════════════════════════════
 const TEST_ACCOUNTS = {
   admin: {
-    name:    "Warren Mensah",
+    name:    "Warren Esonu",
     given:   "Warren",
     email:   "warren.admin@acity.edu.gh",
     picture: null,
@@ -19,7 +19,7 @@ const TEST_ACCOUNTS = {
     isAdmin: true,
   },
   student: {
-    name:    "Warren Mensah",
+    name:    "Warren Esonu",
     given:   "Warren",
     email:   "warren.student@acity.edu.gh",
     picture: null,
@@ -27,7 +27,7 @@ const TEST_ACCOUNTS = {
     isAdmin: false,
   },
   outsider: {
-    name:    "Warren Mensah",
+    name:    "Warren Esonu",
     given:   "Warren",
     email:   "warren.test@gmail.com",
     picture: null,
@@ -36,32 +36,33 @@ const TEST_ACCOUNTS = {
   },
 };
 
-// Show/hide test account button and update it for the selected role
+// Update the test-accounts button for the current role
 function updateTestAccountUI(role) {
   const wrap = document.getElementById("test-accounts");
   if (!wrap) return;
 
+  // Only show in dev mode
   if (typeof DEV_MODE === "undefined" || !DEV_MODE) {
     wrap.style.display = "none";
     return;
   }
 
-  const acct = TEST_ACCOUNTS[role];
+  const acct   = TEST_ACCOUNTS[role];
+  const labels = { admin: "Admin", student: "Student", outsider: "Guest" };
+
+  document.getElementById("test-avatar").textContent      = acct.given[0].toUpperCase();
+  document.getElementById("test-avatar").className        = "test-account-avatar test-avatar-" + role;
+  document.getElementById("test-account-name").textContent  = acct.name + " (" + labels[role] + ")";
+  document.getElementById("test-account-email").textContent = acct.email;
+
+  // Make sure it's visible
   wrap.style.display = "block";
-
-  const avatar = document.getElementById("test-avatar");
-  const name   = document.getElementById("test-account-name");
-  const email  = document.getElementById("test-account-email");
-
-  avatar.textContent = acct.name[0].toUpperCase();
-  avatar.className   = "test-account-avatar test-avatar-" + role;
-  name.textContent   = acct.name + " (" + { admin:"Admin", student:"Student", outsider:"Guest" }[role] + ")";
-  email.textContent  = acct.email;
 }
 
 // Called when tapping the test account button
 function loginAsTestAccount() {
   if (typeof DEV_MODE === "undefined" || !DEV_MODE) return;
+  if (!selectedRole) return;
   currentUser = { ...TEST_ACCOUNTS[selectedRole], token: "test" };
   initFirebase();
   onLoginSuccess();
@@ -78,12 +79,35 @@ function selectRole(role) {
   document.getElementById("login-error").classList.add("hidden");
 
   const cfg = {
-    admin:    { icon:"ti-shield-check", colorClass:"role-icon-admin",    title:"Admin Sign In",   sub:"Sign in with your ACity staff Google account",    domain:"@acity.edu.gh",  badge:"Admin",           badgeCls:"badge-admin"    },
-    student:  { icon:"ti-school",       colorClass:"role-icon-student",  title:"Student Sign In", sub:"Sign in with your ACity student Google account",  domain:"@acity.edu.gh",  badge:"Student",         badgeCls:"badge-student"  },
-    outsider: { icon:"ti-user",         colorClass:"role-icon-outsider", title:"Guest Sign In",   sub:"Sign in with your personal Gmail account",        domain:"@gmail.com",     badge:"Outsider / Guest", badgeCls:"badge-outsider" },
+    admin: {
+      icon:       "ti-shield-check",
+      colorClass: "role-icon-admin",
+      title:      "Admin Sign In",
+      sub:        "Sign in with your ACity staff Google account",
+      domain:     "@acity.edu.gh",
+      badge:      "Admin",
+      badgeCls:   "badge-admin",
+    },
+    student: {
+      icon:       "ti-school",
+      colorClass: "role-icon-student",
+      title:      "Student Sign In",
+      sub:        "Sign in with your ACity student Google account",
+      domain:     "@acity.edu.gh",
+      badge:      "Student",
+      badgeCls:   "badge-student",
+    },
+    outsider: {
+      icon:       "ti-user",
+      colorClass: "role-icon-outsider",
+      title:      "Guest Sign In",
+      sub:        "Sign in with your personal Google account",
+      domain:     "Gmail / Yahoo / iCloud",
+      badge:      "Outsider / Guest",
+      badgeCls:   "badge-outsider",
+    },
   }[role];
 
-  // Update UI
   const logoIcon = document.getElementById("login-logo-icon");
   logoIcon.className = "logo-icon large " + cfg.colorClass;
   logoIcon.innerHTML = `<i class="ti ${cfg.icon}"></i>`;
@@ -96,7 +120,10 @@ function selectRole(role) {
   badge.textContent = cfg.badge;
   badge.className   = "role-badge " + cfg.badgeCls;
 
-  // Show the right test account for this role
+  // Reset button text
+  resetGoogleBtn();
+
+  // Show test account button for this role
   updateTestAccountUI(role);
 }
 
@@ -105,104 +132,123 @@ function goBackToRoles() {
   document.getElementById("login-screen").classList.add("hidden");
   document.getElementById("role-screen").classList.remove("hidden");
   document.getElementById("login-error").classList.add("hidden");
+  // Hide test accounts when going back
+  const wrap = document.getElementById("test-accounts");
+  if (wrap) wrap.style.display = "none";
 }
 
 // ══════════════════════════════════════════════════════════════
 //  GOOGLE OAUTH
+//  Uses Google Identity Services — works with ANY Google account
+//  including Workspace (@acity.edu.gh) and personal Gmail
 // ══════════════════════════════════════════════════════════════
 let googleSDKReady = false;
 
+// Google calls this when its script finishes loading
 window.onGoogleLibraryLoad = function () {
-  google.accounts.id.initialize({
-    client_id:             GOOGLE_CLIENT_ID,
-    callback:              handleGoogleCredential,
-    ux_mode:               "popup",
-    auto_select:           false,
-    cancel_on_tap_outside: true,
-  });
-  googleSDKReady = true;
+  try {
+    google.accounts.id.initialize({
+      client_id:             GOOGLE_CLIENT_ID,
+      callback:              handleGoogleCredential,
+      ux_mode:               "popup",
+      auto_select:           false,
+      cancel_on_tap_outside: true,
+    });
+    googleSDKReady = true;
+  } catch(e) {
+    console.warn("Google SDK init error:", e);
+  }
 };
 
-// Called by the "Continue with Google" button
+// Called when user taps "Continue with Google"
 function triggerGoogleLogin() {
   const btn = document.getElementById("google-signin-btn");
 
   if (!googleSDKReady) {
-    if (btn) btn.textContent = "Loading Google…";
-    setTimeout(triggerGoogleLogin, 500);
+    if (btn) { btn.disabled = true; btn.textContent = "Loading Google…"; }
+    setTimeout(triggerGoogleLogin, 400);
     return;
   }
 
-  if (btn) btn.textContent = "Opening…";
+  if (btn) { btn.disabled = true; btn.textContent = "Opening…"; }
 
-  // Try One Tap first; fall back to OAuth2 token flow if blocked
+  // First try Google One Tap (fast, no popup needed)
   google.accounts.id.prompt((notification) => {
     if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-      // One Tap blocked — use token client popup
-      const client = google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope:     "openid email profile",
-        callback:  (resp) => {
-          if (resp.error) {
-            if (btn) btn.innerHTML = svgGoogle() + " Continue with Google";
-            showLoginError("Sign-in cancelled. Please try again.");
-            return;
-          }
-          fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-            headers: { Authorization: "Bearer " + resp.access_token }
-          })
-          .then(r => r.json())
-          .then(u => processGoogleUser(u.email, u.name, u.picture, u.given_name))
-          .catch(() => showLoginError("Could not get account info. Try again."));
-        },
-      });
-      client.requestAccessToken({ prompt: "select_account" });
+      // One Tap not available — fall back to OAuth2 popup
+      // This is what handles @acity.edu.gh Workspace accounts
+      try {
+        const client = google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope:     "openid email profile",
+          callback:  (resp) => {
+            if (resp.error) {
+              resetGoogleBtn();
+              showLoginError("Sign-in cancelled — please try again.");
+              return;
+            }
+            // Fetch full profile from Google
+            fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+              headers: { Authorization: "Bearer " + resp.access_token }
+            })
+            .then(r => r.json())
+            .then(u => processGoogleUser(u.email, u.name, u.picture, u.given_name))
+            .catch(() => {
+              resetGoogleBtn();
+              showLoginError("Could not get account info — try again.");
+            });
+          },
+        });
+        client.requestAccessToken({ prompt: "select_account" });
+      } catch(e) {
+        resetGoogleBtn();
+        showLoginError("Google sign-in failed. Check your Client ID in config.js.");
+      }
     } else {
-      // One Tap is showing — button can revert
-      if (btn) btn.innerHTML = svgGoogle() + " Continue with Google";
+      // One Tap UI is showing — reset button state
+      resetGoogleBtn();
     }
   });
 }
 
-// Called by One Tap credential flow
+// Handles One Tap JWT credential
 function handleGoogleCredential(response) {
   try {
-    const payload = parseJwt(response.credential);
-    processGoogleUser(payload.email, payload.name, payload.picture, payload.given_name);
+    const p = parseJwt(response.credential);
+    processGoogleUser(p.email, p.name, p.picture, p.given_name);
   } catch(e) {
-    showLoginError("Could not read Google account info. Try again.");
+    resetGoogleBtn();
+    showLoginError("Could not read Google account info — try again.");
   }
 }
 
-// Common handler for both flows
+// Single handler for all Google sign-in paths
 function processGoogleUser(email, name, picture, givenName) {
   document.getElementById("login-error").classList.add("hidden");
+  resetGoogleBtn();
 
-  // Domain check per role
+  // Domain rules per role
   if ((selectedRole === "admin" || selectedRole === "student") && !email.endsWith("@acity.edu.gh")) {
-    showLoginError("This role requires an @acity.edu.gh account. Go back and choose 'Outsider' if you have a Gmail.");
-    resetGoogleBtn();
+    showLoginError("This role requires an @acity.edu.gh account. Go back and choose 'Outsider' if you have a personal email.");
     return;
   }
   if (selectedRole === "outsider" && email.endsWith("@acity.edu.gh")) {
-    showLoginError("ACity accounts should use the Student or Admin role instead.");
-    resetGoogleBtn();
+    showLoginError("ACity accounts should use the Student or Admin role.");
     return;
   }
 
-  // Admin check
+  // Admin verification
   const isAdmin = selectedRole === "admin" && ADMIN_EMAILS.includes(email);
   if (selectedRole === "admin" && !isAdmin) {
-    showLoginError("Your email is not listed as an admin. Contact the hostel manager.");
-    resetGoogleBtn();
+    showLoginError("Your email (" + email + ") is not listed as an admin. Contact the hostel manager.");
     return;
   }
 
   currentUser = {
     email,
-    name,
+    name:    name || nameFromEmail(email),
     picture: picture || null,
-    given:   givenName || name.split(" ")[0],
+    given:   givenName || (name || nameFromEmail(email)).split(" ")[0],
     role:    selectedRole,
     isAdmin,
     token:   "google",
@@ -214,7 +260,9 @@ function processGoogleUser(email, name, picture, givenName) {
 
 function resetGoogleBtn() {
   const btn = document.getElementById("google-signin-btn");
-  if (btn) btn.innerHTML = svgGoogle() + " Continue with Google";
+  if (!btn) return;
+  btn.disabled  = false;
+  btn.innerHTML = svgGoogle() + " Continue with Google";
 }
 
 function svgGoogle() {
@@ -227,18 +275,18 @@ function svgGoogle() {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  POST-LOGIN
+//  POST-LOGIN ROUTING
 // ══════════════════════════════════════════════════════════════
 function onLoginSuccess() {
   document.getElementById("role-screen").classList.add("hidden");
   document.getElementById("login-screen").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
 
-  // Header name
+  // Header — name
   document.getElementById("user-name-short").textContent =
     currentUser.given || currentUser.name.split(" ")[0];
 
-  // Header avatar
+  // Header — avatar
   const av = document.getElementById("user-avatar");
   if (currentUser.picture) {
     av.style.backgroundImage = `url(${currentUser.picture})`;
@@ -249,12 +297,12 @@ function onLoginSuccess() {
     av.textContent = (currentUser.name || "?")[0].toUpperCase();
   }
 
-  // Role chip
+  // Header — role chip
   const chip = document.getElementById("user-role-chip");
   chip.textContent = { admin:"Admin", student:"Student", outsider:"Guest" }[currentUser.role];
   chip.className   = "user-role-chip chip-" + currentUser.role;
 
-  // Route
+  // Route to correct view
   if (currentUser.isAdmin) {
     document.getElementById("header-sub").textContent = "Admin Dashboard";
     document.getElementById("visitor-app").classList.add("hidden");
@@ -282,18 +330,20 @@ function signOut() {
   if (firebaseDB) firebaseDB.ref("entries").off();
 }
 
-// Firebase
+// Firebase init — only runs once
 function initFirebase() {
   if (firebaseApp) return;
   try {
     firebaseApp = firebase.initializeApp(FIREBASE_CONFIG);
     firebaseDB  = firebase.database();
-  } catch(e) { console.warn("Firebase:", e); }
+  } catch(e) {
+    console.warn("Firebase init error:", e);
+  }
 }
 
 // Helpers
 function parseJwt(token) {
-  const b64 = token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+  const b64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
   return JSON.parse(atob(b64));
 }
 function showLoginError(msg) {

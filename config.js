@@ -1,41 +1,31 @@
 // ============================================================
 //  HOSTEL REGISTER — Configuration
-//  Fill in GOOGLE_CLIENT_ID, FIREBASE_CONFIG, SHEET_WEBAPP_URL
-//  and SHEET_URL after following the README setup steps.
 // ============================================================
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-
 
 const GOOGLE_CLIENT_ID = "913153666464-mlmcpbh50v225ioemrkfpcfa7h7ib92b.apps.googleusercontent.com";
 
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDV4NitiX5jlRblymjkmg3i1iiIXFQSb2I",
-  authDomain: "hostel-register-77a28.firebaseapp.com",
-  databaseURL: "https://hostel-register-77a28-default-rtdb.firebaseio.com",
-  projectId: "hostel-register-77a28",
-  storageBucket: "hostel-register-77a28.firebasestorage.app",
+  apiKey:            "AIzaSyDV4NitiX5jlRblymjkmg3i1iiIXFQSb2I",
+  authDomain:        "hostel-register-77a28.firebaseapp.com",
+  databaseURL:       "https://hostel-register-77a28-default-rtdb.firebaseio.com",
+  projectId:         "hostel-register-77a28",
+  storageBucket:     "hostel-register-77a28.firebasestorage.app",
   messagingSenderId: "575123455194",
-  appId: "1:575123455194:web:3e0bb391df54090437b9e3",
-  measurementId: "G-TS1Q533JL5"
+  appId:             "1:575123455194:web:3e0bb391df54090437b9e3",
+  measurementId:     "G-TS1Q533JL5"
 };
 
 const SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyz6LcqR78rPzdBtdpt4wwjBepyyf05JLQPHdhxtQV_r-aKeoq8feVPjbNwohNVinA3vw/exec";
 const SHEET_URL        = "https://docs.google.com/spreadsheets/d/1Umh1wKNRiLPJw7Q7ow5TH-unLORYpzvQq2rVzf-KJz8/edit?gid=0#gid=0";
 const HOSTEL_NAME      = "Academic City Hostel";
 
-// ── Admin emails ─────────────────────────────────────────────
-// Accounts that see the coordinator dashboard when they log in
+// ── Admin emails — these accounts see the coordinator dashboard
 const ADMIN_EMAILS = [
-  "warren.admin@acity.edu.gh",   // Warren's test admin account
-  // Add real admin emails here:
-  "esonwarr@gmail.com"
-  "esonuwarren11@gmail.com"
-  // "coordinator@acity.edu.gh",
+  "warren.admin@acity.edu.gh",
+  "esonwarr@gmail.com",
+  "esonuwarren11@gmail.com",
 ];
 
-// ── Developer / test mode ────────────────────────────────────
-// When true, a "Use test account" button appears on the login
-// screen so you can bypass Google login for testing.
-// Set to false before going live.
+// ── Developer test mode
+// Set to false before going live
 const DEV_MODE = true;

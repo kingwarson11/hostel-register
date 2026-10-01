@@ -209,12 +209,12 @@
             <span>Who are you visiting?</span>
           </div>
 
-          <!-- Step 1: enter room number -->
+          <!-- Step 1: enter room number (only after hostel picked) -->
           <div class="field">
             <label for="room-input">Room number <span class="req">*</span></label>
             <div class="search-wrap">
               <i class="ti ti-door search-icon"></i>
-              <input id="room-input" type="text" placeholder="e.g. D11, A101, B203"
+              <input id="room-input" type="text" placeholder="Pick a hostel first, then enter room"
                 autocomplete="off" oninput="onRoomInput(this.value)" />
             </div>
           </div>
@@ -294,27 +294,57 @@
         </div>
       </div>
 
-      <!-- Sign OUT card — one tap, no PIN -->
+      <!-- Sign OUT card — request PIN from admin -->
       <div class="signout-card" id="signout-card">
         <div class="signout-card-header">
           <div class="signout-card-icon so-icon"><i class="ti ti-door-exit"></i></div>
           <div>
             <div class="signout-card-title">Ready to leave?</div>
-            <div class="signout-card-sub">Tap Sign Out and the coordinator will be notified</div>
+            <div class="signout-card-sub">Request a code from the admin to sign out</div>
           </div>
         </div>
 
-        <!-- Stored visit info — auto-filled, no re-typing -->
+        <!-- Stored visit info -->
         <div class="stored-visit-info hidden" id="stored-visit-info">
           <div class="svi-row"><i class="ti ti-user"></i><span id="svi-name"></span></div>
           <div class="svi-row"><i class="ti ti-home"></i><span id="svi-resident"></span></div>
           <div class="svi-row"><i class="ti ti-door-enter"></i><span id="svi-timein"></span></div>
         </div>
 
-        <div class="signout-btn-wrap">
-          <button id="btn-sign-out" class="btn-sign-out-full" onclick="doSignOut()">
+        <!-- Step A: Request code button -->
+        <div id="so-request-step" class="signout-btn-wrap">
+          <button class="btn-request-code" onclick="requestSignOutCode()">
+            <i class="ti ti-key"></i> Request Sign-Out Code
+          </button>
+          <p class="so-hint">Admin will receive a 4-digit code to give you</p>
+        </div>
+
+        <!-- Step B: Enter code (shown after requesting) -->
+        <div id="so-enter-step" class="hidden">
+          <p class="so-code-label">Enter the 4-digit code from admin</p>
+          <div class="so-pin-dots">
+            <span id="sd0"></span><span id="sd1"></span>
+            <span id="sd2"></span><span id="sd3"></span>
+          </div>
+          <div class="so-keypad">
+            <button class="pin-key" onclick="soPinPress('1')">1</button>
+            <button class="pin-key" onclick="soPinPress('2')">2</button>
+            <button class="pin-key" onclick="soPinPress('3')">3</button>
+            <button class="pin-key" onclick="soPinPress('4')">4</button>
+            <button class="pin-key" onclick="soPinPress('5')">5</button>
+            <button class="pin-key" onclick="soPinPress('6')">6</button>
+            <button class="pin-key" onclick="soPinPress('7')">7</button>
+            <button class="pin-key" onclick="soPinPress('8')">8</button>
+            <button class="pin-key" onclick="soPinPress('9')">9</button>
+            <button class="pin-key pin-key-empty"></button>
+            <button class="pin-key" onclick="soPinPress('0')">0</button>
+            <button class="pin-key pin-key-del" onclick="soPinDel()"><i class="ti ti-backspace"></i></button>
+          </div>
+          <div class="so-pin-error hidden" id="so-pin-error">Wrong code — try again</div>
+          <button id="btn-sign-out" class="btn-sign-out-full" onclick="doSignOut()" disabled>
             <i class="ti ti-logout"></i> Sign Out
           </button>
+          <button class="cancel-pin-btn" onclick="cancelSignOutCode()">Cancel</button>
         </div>
       </div>
 
@@ -381,6 +411,18 @@
         <button class="fpill" onclick="setFilter('out',this)"><span class="dot dot-red"></span>Signed out</button>
         <button class="fpill" onclick="setFilter('student',this)"><span class="dot dot-blue"></span>Students</button>
         <button class="fpill" onclick="setFilter('outsider',this)"><span class="dot dot-amber"></span>Outsiders</button>
+      </div>
+
+      <!-- Search bar -->
+      <div class="admin-search-wrap">
+        <i class="ti ti-search admin-search-icon"></i>
+        <input id="admin-search" type="text" class="admin-search-input"
+          placeholder="Search by name, email or room…"
+          oninput="filterLog(this.value)" />
+        <button class="admin-search-clear hidden" id="admin-search-clear"
+          onclick="clearLogSearch()">
+          <i class="ti ti-x"></i>
+        </button>
       </div>
 
       <div class="log-list" id="log-list">
@@ -454,6 +496,24 @@
   </div><!-- /admin-app -->
 
 </div><!-- /app -->
+
+<!-- ══ ADMIN SIGN-OUT CODE POPUP ══ -->
+<div id="admin-signout-overlay" class="admin-signout-overlay hidden">
+  <div class="admin-signout-popup">
+    <div class="asc-header">
+      <div class="asc-icon"><i class="ti ti-key"></i></div>
+      <div>
+        <div class="asc-title">Sign-Out Code Request</div>
+        <div class="asc-sub" id="asc-visitor-name"></div>
+      </div>
+      <button class="asc-dismiss" onclick="dismissSignOutCode()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="asc-detail" id="asc-detail"></div>
+    <div class="asc-code-label">Give this code to the visitor</div>
+    <div class="asc-code" id="asc-code"></div>
+    <div class="asc-expires" id="asc-expires">Valid for 5 minutes</div>
+  </div>
+</div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 

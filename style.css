@@ -2264,3 +2264,247 @@ body {
   .field-row-two { grid-template-columns: 1fr; }
   .id-upload-btns { grid-template-columns: 1fr; }
 }
+
+/* ═══════════════════════════════════════════════
+   ADMIN SEARCH BAR
+═══════════════════════════════════════════════ */
+.admin-search-wrap {
+  position: relative;
+  margin-bottom: 14px;
+}
+.admin-search-icon {
+  position: absolute;
+  left: 13px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--gray-400);
+  font-size: 17px;
+  pointer-events: none;
+}
+.admin-search-input {
+  width: 100%;
+  padding: 12px 40px 12px 42px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--r-md);
+  font-size: 15px;
+  background: var(--gray-50);
+  color: var(--gray-900);
+  transition: all .15s;
+}
+.admin-search-input:focus {
+  outline: none;
+  border-color: var(--brand);
+  background: var(--gray-0);
+  box-shadow: 0 0 0 3px rgba(29,158,117,.12);
+}
+.admin-search-clear {
+  position: absolute;
+  right: 10px; top: 50%;
+  transform: translateY(-50%);
+  width: 26px; height: 26px;
+  border: none;
+  background: var(--gray-200);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: var(--gray-600);
+  transition: all .15s;
+}
+.admin-search-clear:hover { background: var(--gray-300); color: var(--gray-900); }
+
+/* ═══════════════════════════════════════════════
+   SIGN-OUT CODE FLOW (visitor side)
+═══════════════════════════════════════════════ */
+.btn-request-code {
+  width: 100%;
+  padding: 14px;
+  background: var(--red-light);
+  color: var(--red-dark);
+  border: 1.5px solid #fca5a5;
+  border-radius: var(--r-md);
+  font-size: 15px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-request-code:hover { background: #fca5a5; }
+.btn-request-code .ti  { font-size: 18px; }
+
+.so-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--gray-400);
+  margin-top: 8px;
+}
+
+.so-code-label {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-600);
+  margin: 16px 0 12px;
+}
+
+.so-pin-dots {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.so-pin-dots span {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--gray-300);
+  background: transparent;
+  transition: all .15s;
+  display: block;
+}
+.so-pin-dots span.filled {
+  background: var(--red);
+  border-color: var(--red);
+  transform: scale(1.15);
+}
+.so-pin-dots span.shake { animation: shake .4s ease; }
+
+.so-keypad {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 8px;
+  padding: 0 20px;
+  margin-bottom: 12px;
+}
+
+.so-pin-error {
+  text-align: center;
+  font-size: 13px; font-weight: 600;
+  color: var(--red);
+  padding: 8px 16px;
+  background: var(--red-light);
+  border-radius: var(--r-sm);
+  margin: 0 20px 12px;
+}
+
+.btn-unlocked {
+  background: var(--red) !important;
+  box-shadow: 0 4px 16px rgba(229,57,53,.4) !important;
+  opacity: 1 !important;
+}
+
+.cancel-pin-btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 13px; font-weight: 600;
+  background: transparent; border: none;
+  color: var(--gray-500); cursor: pointer;
+  transition: color .15s;
+  margin-bottom: 8px;
+}
+.cancel-pin-btn:hover { color: var(--gray-900); }
+
+/* ═══════════════════════════════════════════════
+   ADMIN SIGN-OUT CODE POPUP
+═══════════════════════════════════════════════ */
+.admin-signout-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn .2s ease;
+}
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+.admin-signout-popup {
+  background: var(--gray-900);
+  border-radius: var(--r-xl);
+  padding: 28px 24px 24px;
+  width: 100%;
+  max-width: 340px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.5);
+  animation: popUp .35s cubic-bezier(.34,1.3,.64,1);
+}
+@keyframes popUp {
+  from { transform: scale(.85) translateY(20px); opacity:0; }
+  to   { transform: scale(1)   translateY(0);    opacity:1; }
+}
+
+.asc-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.asc-icon {
+  width: 44px; height: 44px;
+  border-radius: var(--r-md);
+  background: rgba(229,57,53,.2);
+  border: 1px solid rgba(229,57,53,.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; color: #fca5a5;
+  flex-shrink: 0;
+}
+.asc-title {
+  font-size: 15px; font-weight: 700;
+  color: #fff;
+  margin-bottom: 3px;
+}
+.asc-sub {
+  font-size: 13px;
+  color: rgba(255,255,255,.5);
+}
+.asc-dismiss {
+  margin-left: auto;
+  background: rgba(255,255,255,.1);
+  border: none;
+  color: rgba(255,255,255,.5);
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+  transition: all .15s;
+}
+.asc-dismiss:hover { background: rgba(255,255,255,.2); color: #fff; }
+
+.asc-detail {
+  font-size: 13px;
+  color: rgba(255,255,255,.6);
+  margin-bottom: 20px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,.06);
+  border-radius: var(--r-md);
+}
+
+.asc-code-label {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em;
+  color: rgba(255,255,255,.4);
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.asc-code {
+  font-size: 56px; font-weight: 900;
+  color: #fff;
+  text-align: center;
+  letter-spacing: 14px;
+  font-family: "SF Mono","Fira Code",monospace;
+  text-shadow: 0 0 30px rgba(255,255,255,.3);
+  margin-bottom: 10px;
+  padding: 16px 0;
+  background: rgba(255,255,255,.05);
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(255,255,255,.1);
+}
+
+.asc-expires {
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255,255,255,.3);
+  margin-top: 4px;
+}

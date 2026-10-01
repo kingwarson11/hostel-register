@@ -41,27 +41,40 @@ async function seedDemoResidents() {
 function onRoomInput(value) {
   const roomBox = document.getElementById("room-residents");
   const q = value.trim().toUpperCase();
-  if (!q || q.length < 2) { roomBox.classList.add("hidden"); return; }
 
-  // Find all residents whose room starts with / matches the input
+  // Must pick a hostel first
+  const hostel = document.querySelector('input[name="hostel"]:checked')?.value;
+  if (!hostel) {
+    roomBox.innerHTML = `<div class="room-no-match">
+      <i class="ti ti-alert-circle"></i> Please select a hostel first
+    </div>`;
+    roomBox.classList.remove("hidden");
+    return;
+  }
+
+  if (!q || q.length < 1) { roomBox.classList.add("hidden"); return; }
+
+  // Filter by BOTH hostel AND room number
   const matches = Object.values(residentsCache)
-    .filter(r => (r.room||"").toUpperCase().startsWith(q) ||
-                 (r.room||"").toUpperCase() === q);
+    .filter(r =>
+      (r.hostel || "") === hostel &&
+      ((r.room||"").toUpperCase().startsWith(q) || (r.room||"").toUpperCase() === q)
+    );
 
   if (!matches.length) {
     roomBox.innerHTML = `<div class="room-no-match">
-      <i class="ti ti-mood-empty"></i> No residents found in room "${q}"
+      <i class="ti ti-mood-empty"></i> No residents in room "${q}" of ${hostel}
     </div>`;
     roomBox.classList.remove("hidden");
     return;
   }
 
   roomBox.innerHTML = matches.map(r => `
-    <button class="room-resident-option" onclick="selectResident('${encodeURIComponent(JSON.stringify(r))}')">
+    <button class="room-resident-option" onclick="selectResident(${JSON.stringify(JSON.stringify(r))})">
       <div class="rro-avatar">${initials(r.name)}</div>
       <div class="rro-info">
         <strong>${r.name}</strong>
-        <span>Room ${r.room}${r.hostel ? " · " + r.hostel : ""}</span>
+        <span>Room ${r.room} · ${r.hostel}</span>
       </div>
       <div class="rro-select"><i class="ti ti-chevron-right"></i></div>
     </button>
@@ -82,7 +95,12 @@ function searchResidents(query) {
 let selectedResident = null;
 
 function selectResident(encoded) {
-  selectedResident = JSON.parse(decodeURIComponent(encoded));
+  // Handles both URI-encoded and plain JSON strings
+  try {
+    selectedResident = JSON.parse(decodeURIComponent(encoded));
+  } catch(e) {
+    selectedResident = JSON.parse(encoded);
+  }
 
   // Hide the room options list
   const roomBox = document.getElementById("room-residents");

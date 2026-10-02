@@ -175,9 +175,31 @@
           </div>
 
           <div class="field">
-            <label for="v-phone">Phone number <span class="req">*</span></label>
-            <input id="v-phone" type="tel" placeholder="0XX XXX XXXX" />
+            <label>Phone number <span class="req">*</span></label>
+            <div class="phone-picker-wrap">
+              <button type="button" class="country-picker-btn" id="country-picker-btn"
+                onclick="toggleCountryDropdown()">
+                <span id="cp-flag">🇬🇭</span>
+                <span id="cp-code">+233</span>
+                <i class="ti ti-chevron-down cp-arrow"></i>
+              </button>
+              <input id="v-phone-number" type="tel" class="phone-number-input"
+                placeholder="XX XXX XXXX"
+                oninput="onPhoneInput(this)"
+                onkeypress="return /[0-9]/.test(event.key)" />
+            </div>
+            <div id="country-dropdown" class="country-dropdown hidden">
+              <div class="country-search-wrap">
+                <i class="ti ti-search"></i>
+                <input type="text" id="country-search" placeholder="Search country…"
+                  oninput="filterCountries(this.value)" onclick="event.stopPropagation()" />
+              </div>
+              <div id="country-list" class="country-list"></div>
+            </div>
+            <div class="phone-hint" id="phone-hint"></div>
           </div>
+          <!-- Hidden combined phone value -->
+          <input type="hidden" id="v-phone" />
 
           <div class="field">
             <label>Hostel <span class="req">*</span></label>
@@ -522,6 +544,30 @@
 <script src="config.js"></script>
 <script src="auth.js"></script>
 <script src="db.js"></script>
+<script src="phone.js"></script>
 <script src="app.js"></script>
+<!-- Watermark — obfuscated -->
+<div id="wm" class="wm"></div>
+
+<script>
+// Watermark — do not remove
+(function(){
+  var e=document.getElementById('wm');
+  if(!e)return;
+  var p=[77,97,100,101,32,98,121,32,87,97,114,114,101,110,32,69,115,111,110,117];
+  e.textContent=p.map(function(c){return String.fromCharCode(c);}).join('');
+  // Re-inject if removed
+  var o=new MutationObserver(function(){
+    if(!document.getElementById('wm')){
+      var n=document.createElement('div');
+      n.id='wm';n.className='wm';
+      n.textContent=p.map(function(c){return String.fromCharCode(c);}).join('');
+      document.body.appendChild(n);
+    }
+  });
+  o.observe(document.body,{childList:true,subtree:true});
+})();
+</script>
+
 </body>
 </html>

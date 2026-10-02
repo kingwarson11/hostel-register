@@ -253,6 +253,9 @@ async function doSignIn() {
   const room     = document.getElementById("room-input").value.trim().toUpperCase();
 
   if (!phone)           { showToast("Please enter your phone number", "toast-err"); return; }
+  if (typeof isPhoneValid === "function" && !isPhoneValid()) {
+    showToast("Phone number length is incorrect for the selected country", "toast-err"); return;
+  }
   if (!hostel)          { showToast("Please select Hostel A or Hostel B", "toast-err"); return; }
   if (!selectedResident){ showToast("Please select the resident you are visiting", "toast-err"); return; }
   if (!room)            { showToast("Please enter the room number", "toast-err"); return; }

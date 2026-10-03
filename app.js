@@ -226,7 +226,7 @@ function resetSignOutCard() {
 async function loadStoredVisitInfo() {
   const entries = await fetchAllEntries();
   const open = entries.find(e =>
-    e.visitorEmail === currentUser.email && e.date === todayStr() && e.status === "in"
+    e.visitorEmail === currentUser.email && e.status === "in"
   );
   if (open) {
     showSignOutInfo(open);
@@ -265,15 +265,7 @@ async function doSignIn() {
   if (!selectedIdType)  { showToast("Please select your ID type", "toast-err"); return; }
   if (!idPhotoBase64)   { showToast("Please upload a photo of your ID", "toast-err"); return; }
 
-  // One sign-in/out per day
-  const today   = todayStr();
-  const entries = await fetchAllEntries();
-  if (entries.find(e => e.visitorEmail === currentUser.email && e.date === today && e.status === "out")) {
-    showAlreadyDone("out"); return;
-  }
-  if (entries.find(e => e.visitorEmail === currentUser.email && e.date === today && e.status === "in")) {
-    showAlreadyDone("in"); return;
-  }
+  // No restriction — visitor can sign in multiple times
 
   const now   = new Date();
   const entry = {
@@ -317,16 +309,11 @@ let currentSignOutPin = null;
 let soPinBuffer       = "";
 
 async function requestSignOutCode() {
-  const today   = todayStr();
   const entries = await fetchAllEntries();
-
-  if (entries.find(e => e.visitorEmail === currentUser.email && e.date === today && e.status === "out")) {
-    showAlreadyDone("out"); return;
-  }
 
   if (!activeEntry) {
     activeEntry = entries.find(e =>
-      e.visitorEmail === currentUser.email && e.status === "in" && e.date === today
+      e.visitorEmail === currentUser.email && e.status === "in"
     );
   }
 

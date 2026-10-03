@@ -88,31 +88,52 @@ function selectResidentByKey(key) {
 function selectResident(r) {
   selectedResident = r;
 
-  // Hide room options
+  // Hide room options list
   const roomBox = document.getElementById("room-residents");
   if (roomBox) roomBox.classList.add("hidden");
 
-  // Show selected chip
-  document.getElementById("sel-avatar").textContent = initials(r.name);
-  document.getElementById("sel-name").textContent   = r.name;
-  document.getElementById("sel-room").textContent   =
-    "Room " + r.room + (r.hostel ? " · " + r.hostel : "");
-  document.getElementById("selected-resident").classList.remove("hidden");
+  // Populate the styled card
+  const avatarEl = document.getElementById("sel-avatar");
+  const nameEl   = document.getElementById("sel-name");
+  const roomEl2  = document.getElementById("sel-room");
+  const card     = document.getElementById("selected-resident");
 
-  // Auto-fill room
-  const roomEl = document.getElementById("room-input");
-  if (roomEl) roomEl.value = r.room;
+  if (avatarEl) {
+    avatarEl.textContent = initials(r.name);
+    // Colour avatar based on hostel
+    avatarEl.className = "src-avatar " +
+      (r.hostel === "Hostel B" ? "src-avatar-b" : "src-avatar-a");
+  }
+  if (nameEl)  nameEl.textContent  = r.name;
+  if (roomEl2) roomEl2.textContent = `Room ${r.room} · ${r.hostel || ""} · ${r.email}`;
 
-  // Auto-select hostel
+  // Show the card
+  if (card) {
+    card.classList.remove("hidden");
+    card.classList.add("src-animate");
+    setTimeout(() => card.classList.remove("src-animate"), 400);
+  }
+
+  // Auto-fill room input
+  const roomInp = document.getElementById("room-input");
+  if (roomInp) roomInp.value = r.room;
+
+  // Auto-select hostel radio WITHOUT triggering clearResident
   if (r.hostel) {
     const radio = document.querySelector(`input[name="hostel"][value="${r.hostel}"]`);
-    if (radio) { radio.checked = true; onHostelChange(); }
+    if (radio && !radio.checked) {
+      radio.checked = true;
+      // Manually update labels only — don't call onHostelChange (clears resident)
+      document.getElementById("hostel-a-label")?.classList.toggle("radio-selected", r.hostel === "Hostel A");
+      document.getElementById("hostel-b-label")?.classList.toggle("radio-selected", r.hostel === "Hostel B");
+    }
   }
 }
 
 function clearResident() {
   selectedResident = null;
-  document.getElementById("selected-resident").classList.add("hidden");
+  const card = document.getElementById("selected-resident");
+  if (card) card.classList.add("hidden");
   const roomEl  = document.getElementById("room-input");
   const roomBox = document.getElementById("room-residents");
   if (roomEl)  roomEl.value = "";

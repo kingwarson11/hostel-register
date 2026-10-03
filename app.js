@@ -246,7 +246,10 @@ function showSignOutInfo(entry) {
 // ══════════════════════════════════════════════════════════════
 //  SIGN IN
 // ══════════════════════════════════════════════════════════════
+let signingIn = false;  // guard against double-tap
+
 async function doSignIn() {
+  if (signingIn) return;
   const fullName = currentUser.name;
   const phone    = document.getElementById("v-phone").value.trim();
   const hostel   = document.querySelector('input[name="hostel"]:checked')?.value;
@@ -293,9 +296,11 @@ async function doSignIn() {
     status:        "in",
   };
 
+  signingIn = true;
   setLoading("btn-sign-in", true);
   await writeEntry(entry);
   setLoading("btn-sign-in", false);
+  signingIn = false;
 
   saveFormData();
   activeEntry = entry;
@@ -511,7 +516,6 @@ function switchAdminTab(tab) {
 let allEntries     = [];
 let currentFilter  = "all";
 let logSearchQuery = "";
-let lastKnownCount = -1;
 
 function initAdminDashboard() {
   document.getElementById("coord-date").textContent =
@@ -522,18 +526,17 @@ function initAdminDashboard() {
     if (l) { l.href = SHEET_URL; l.classList.remove("hidden"); }
   }
 
-  // Live entries listener
+  // Live entries listener — rebuilds the log every time Firebase updates
   listenForEntries(entries => {
-    const isFirst  = lastKnownCount === -1;
-    allEntries     = entries;
+    allEntries = entries;
     updateStats();
     renderLogs();
     flashRefresh();
-    if (isFirst) lastKnownCount = entries.length;
   });
 
-  // Notification listener for new sign-ins/outs
-  setTimeout(() => listenForNewEntries((entry) => pushNotif(entry)), 2500);
+  // Notification listener — only fires for genuinely new events
+  // Small delay so initial load IDs are marked as seen first
+  setTimeout(() => listenForNewEntries((entry) => pushNotif(entry)), 1000);
 
   // Listen for sign-out code requests — show admin popup
   listenForSignOutCodes();

@@ -244,16 +244,18 @@
           <!-- Step 2: residents in that room appear as option cards -->
           <div id="room-residents" class="room-residents hidden"></div>
 
-          <!-- Selected resident chip -->
-          <div id="selected-resident" class="selected-resident hidden">
-            <div class="selected-info">
-              <div class="selected-avatar" id="sel-avatar"></div>
-              <div>
-                <strong id="sel-name"></strong>
-                <span id="sel-room"></span>
-              </div>
+          <!-- Selected resident — styled card -->
+          <div id="selected-resident" class="selected-resident-card hidden">
+            <div class="src-tick"><i class="ti ti-circle-check"></i></div>
+            <div class="src-avatar" id="sel-avatar"></div>
+            <div class="src-body">
+              <div class="src-label">Visiting</div>
+              <div class="src-name" id="sel-name"></div>
+              <div class="src-meta" id="sel-room"></div>
             </div>
-            <button class="clear-btn" onclick="clearResident()"><i class="ti ti-x"></i></button>
+            <button class="src-change" onclick="clearResident()">
+              <i class="ti ti-pencil"></i> Change
+            </button>
           </div>
         </div>
 
@@ -348,6 +350,7 @@
             <span id="sd0"></span><span id="sd1"></span>
             <span id="sd2"></span><span id="sd3"></span>
           </div>
+          <div class="so-countdown" id="so-countdown"></div>
           <div class="so-keypad">
             <button class="pin-key" onclick="soPinPress('1')">1</button>
             <button class="pin-key" onclick="soPinPress('2')">2</button>

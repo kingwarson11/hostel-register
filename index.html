@@ -470,6 +470,71 @@
           </div>
         </div>
 
+        <!-- ── IMPORT FROM FILE ── -->
+        <div class="import-card" id="import-card">
+          <div class="import-title">
+            <i class="ti ti-file-import"></i> Import residents from file
+          </div>
+          <div class="import-formats">Supports CSV, Excel (.xlsx), or plain text</div>
+
+          <!-- Drop zone -->
+          <div class="import-dropzone" id="import-dropzone"
+            onclick="document.getElementById('import-file-input').click()"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')"
+            ondrop="onImportFileDrop(event)">
+            <input type="file" id="import-file-input"
+              accept=".csv,.xlsx,.xls,.txt"
+              style="display:none" onchange="onImportFileSelected(this)" />
+            <i class="ti ti-upload"></i>
+            <div class="import-dz-text">Tap to upload or drag file here</div>
+            <div class="import-dz-sub">CSV, Excel or TXT — columns: Name, Email, Room, Hostel</div>
+          </div>
+
+          <!-- Preview table (shown after file parsed) -->
+          <div id="import-preview" class="hidden">
+            <div class="import-preview-header">
+              <div class="import-preview-title">
+                <i class="ti ti-table"></i>
+                <span id="import-preview-count"></span>
+              </div>
+              <div class="import-preview-actions">
+                <button class="import-clear-btn" onclick="clearImport()">
+                  <i class="ti ti-x"></i> Clear
+                </button>
+                <button class="import-go-btn" id="import-go-btn" onclick="runImport()">
+                  <i class="ti ti-database-import"></i> Import all
+                </button>
+              </div>
+            </div>
+            <div class="import-table-wrap">
+              <table class="import-table" id="import-table">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Room</th>
+                    <th>Hostel</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="import-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="import-msg" class="import-msg hidden"></div>
+          <div id="import-progress" class="import-progress hidden">
+            <div class="import-progress-bar" id="import-progress-bar"></div>
+            <div class="import-progress-label" id="import-progress-label"></div>
+          </div>
+        </div>
+
+        <div class="import-divider">
+          <span>— or add a single resident —</span>
+        </div>
+
         <div class="add-resident-card">
           <div class="add-resident-title"><i class="ti ti-user-plus"></i> Add a resident</div>
           <div class="field">
@@ -544,10 +609,13 @@
 
 
 
+<!-- SheetJS for Excel reading -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="config.js"></script>
 <script src="auth.js"></script>
 <script src="db.js"></script>
 <script src="phone.js"></script>
+<script src="import.js"></script>
 <script src="app.js"></script>
 <!-- Watermark — obfuscated -->
 <div id="wm" class="wm"></div>

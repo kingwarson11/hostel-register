@@ -334,6 +334,8 @@ async function requestSignOutCode() {
   const code = String(Math.floor(1000 + Math.random() * 9000));
   currentSignOutPin = code;
 
+  const expiresAt = Date.now() + 2 * 60 * 1000;
+
   // Store code in Firebase so admin can see it in real-time
   if (firebaseDB) {
     await firebaseDB.ref("signout_codes/" + activeEntry.id).set({
@@ -344,7 +346,7 @@ async function requestSignOutCode() {
       room:         activeEntry.room,
       hostel:       activeEntry.hostel || "",
       requestedAt:  Date.now(),
-      expiresAt:    Date.now() + 5 * 60 * 1000,
+      expiresAt,
     });
   }
 
@@ -356,6 +358,38 @@ async function requestSignOutCode() {
   document.getElementById("so-pin-error").classList.add("hidden");
   const btn = document.getElementById("btn-sign-out");
   if (btn) btn.disabled = true;
+
+  // Start live 2-minute countdown for visitor
+  startSignOutCountdown(expiresAt);
+}
+
+let countdownTimer = null;
+
+function startSignOutCountdown(expiresAt) {
+  clearInterval(countdownTimer);
+  const countEl = document.getElementById("so-countdown");
+
+  function tick() {
+    const remaining = expiresAt - Date.now();
+    if (!countEl) return;
+    if (remaining <= 0) {
+      clearInterval(countdownTimer);
+      countEl.textContent = "Code expired";
+      countEl.className   = "so-countdown expired";
+      // Auto-cancel after expiry
+      setTimeout(() => {
+        cancelSignOutCode();
+        showToast("Sign-out code expired — request a new one", "toast-err");
+      }, 1000);
+      return;
+    }
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    countEl.textContent = `Code expires in ${mins}:${String(secs).padStart(2,"0")}`;
+    countEl.className   = remaining < 30000 ? "so-countdown urgent" : "so-countdown";
+  }
+  tick();
+  countdownTimer = setInterval(tick, 1000);
 }
 
 function soPinPress(digit) {
@@ -396,6 +430,7 @@ function checkSoPin() {
 }
 
 function cancelSignOutCode() {
+  clearInterval(countdownTimer);
   currentSignOutPin = null;
   soPinBuffer       = "";
   if (firebaseDB && activeEntry) {
@@ -403,6 +438,8 @@ function cancelSignOutCode() {
   }
   document.getElementById("so-request-step").classList.remove("hidden");
   document.getElementById("so-enter-step").classList.add("hidden");
+  const countEl = document.getElementById("so-countdown");
+  if (countEl) countEl.textContent = "";
   updateSoPinDots();
 }
 
@@ -415,6 +452,7 @@ async function doSignOut() {
   activeEntry.timeOut    = now.toISOString();
   activeEntry.timeOutStr = fmtTime(now);
 
+  clearInterval(countdownTimer);
   setLoading("btn-sign-out", true);
   await updateSignOut(activeEntry);
 

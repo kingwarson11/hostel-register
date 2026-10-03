@@ -190,6 +190,10 @@ async function updateSignOut(entry) {
 }
 
 // ── Live listeners ────────────────────────────────────────────
+// Track entry IDs we've already seen so we never show a duplicate notification
+const seenEntryIds = new Set();
+let initialLoadDone = false;
+
 function listenForEntries(callback) {
   if (!firebaseDB) return;
   const today = todayStr();
@@ -198,8 +202,16 @@ function listenForEntries(callback) {
       const raw = snap.val() || {};
       const entries = Object.values(raw)
         .sort((a, b) => new Date(b.timeIn) - new Date(a.timeIn));
+
+      // Mark all current IDs as seen on first load
+      if (!initialLoadDone) {
+        entries.forEach(e => seenEntryIds.add(e.id));
+        initialLoadDone = true;
+      }
+
+      // Fetch ID photos and return
       Promise.all(entries.map(async e => {
-        if (!e.idPhoto) {
+        if (!e.idPhoto && firebaseDB) {
           const ps = await firebaseDB.ref("id_photos/" + e.id).once("value");
           const pd = ps.val();
           if (pd) e.idPhoto = pd.photo;
@@ -212,12 +224,24 @@ function listenForEntries(callback) {
 function listenForNewEntries(onNew) {
   if (!firebaseDB) return;
   const today = todayStr();
-  firebaseDB.ref("entries").orderByChild("date").equalTo(today)
-    .on("child_changed", snap => onNew(snap.val(), "changed"));
+
+  // Use child_added for NEW entries only — skip ones we already saw on load
   firebaseDB.ref("entries").orderByChild("date").equalTo(today)
     .on("child_added", snap => {
-      if (lastKnownCount < 0) return;
-      onNew(snap.val(), "added");
+      const entry = snap.val();
+      if (!entry) return;
+      // Skip if we saw this on initial load
+      if (seenEntryIds.has(entry.id)) return;
+      seenEntryIds.add(entry.id);
+      onNew(entry, "added");
+    });
+
+  // child_changed fires when sign-out updates an existing entry
+  firebaseDB.ref("entries").orderByChild("date").equalTo(today)
+    .on("child_changed", snap => {
+      const entry = snap.val();
+      if (!entry) return;
+      onNew(entry, "changed");
     });
 }
 

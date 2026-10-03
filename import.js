@@ -1,233 +1,644 @@
-// import.js — Bulk resident import from CSV / Excel / TXT
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Academic City Hostel</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+</head>
+<body>
 
-let importRows    = [];   // parsed + validated rows ready to import
-let importErrors  = [];   // rows with issues
+<!-- ══ STEP 1 — ROLE PICKER ══ -->
+<div id="role-screen" class="login-screen">
+  <div class="login-blob login-blob-1"></div>
+  <div class="login-blob login-blob-2"></div>
+  <div class="login-card wide">
+    <div class="login-logo">
+      <div class="logo-icon large"><i class="ti ti-building-community"></i></div>
+    </div>
+    <h1 class="login-title" id="role-screen-title">Academic City<br>Hostel Register</h1>
+    <p class="login-sub">Who are you? Pick your role to continue</p>
+    <div class="role-grid">
+      <button class="role-card" onclick="selectRole('admin')">
+        <div class="role-icon role-icon-admin"><i class="ti ti-shield-check"></i></div>
+        <div class="role-label">Admin</div>
+        <div class="role-desc">Hostel coordinator &amp; staff</div>
+      </button>
+      <button class="role-card" onclick="selectRole('student')">
+        <div class="role-icon role-icon-student"><i class="ti ti-school"></i></div>
+        <div class="role-label">Student</div>
+        <div class="role-desc">ACity student visiting a resident</div>
+      </button>
+      <button class="role-card" onclick="selectRole('outsider')">
+        <div class="role-icon role-icon-outsider"><i class="ti ti-user"></i></div>
+        <div class="role-label">Outsider</div>
+        <div class="role-desc">External guest visitor</div>
+      </button>
+    </div>
+  </div>
+</div>
 
-// ── File selected via input or drag-drop ──────────────────────
-function onImportFileSelected(input) {
-  const file = input.files[0];
-  if (file) processImportFile(file);
-  input.value = "";
-}
+<!-- ══ STEP 2 — GOOGLE LOGIN ══ -->
+<div id="login-screen" class="login-screen hidden">
+  <div class="login-blob login-blob-1"></div>
+  <div class="login-blob login-blob-2"></div>
+  <div class="login-card">
+    <button class="back-btn" onclick="goBackToRoles()">
+      <i class="ti ti-arrow-left"></i> Back
+    </button>
+    <div class="role-badge-wrap">
+      <div class="role-badge" id="login-role-badge"></div>
+    </div>
+    <div class="login-logo">
+      <div class="logo-icon large" id="login-logo-icon">
+        <i class="ti ti-building-community"></i>
+      </div>
+    </div>
+    <h1 class="login-title" id="login-title">Sign in</h1>
+    <p class="login-sub" id="login-sub">Use the correct Google account for your role</p>
 
-function onImportFileDrop(event) {
-  event.preventDefault();
-  document.getElementById("import-dropzone").classList.remove("drag-over");
-  const file = event.dataTransfer.files[0];
-  if (file) processImportFile(file);
-}
+    <!-- Custom Google button — works reliably on all devices -->
+    <button class="google-btn" id="google-signin-btn" onclick="triggerGoogleLogin()">
+      <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+      Continue with Google
+    </button>
 
-function processImportFile(file) {
-  const ext = file.name.split(".").pop().toLowerCase();
-  const reader = new FileReader();
+    <div class="login-divider">
+      <span class="login-domain-pill" id="login-domain-pill">@acity.edu.gh</span>
+    </div>
 
-  if (ext === "csv" || ext === "txt") {
-    reader.onload = e => parseCSV(e.target.result);
-    reader.readAsText(file);
-  } else if (ext === "xlsx" || ext === "xls") {
-    reader.onload = e => parseExcel(e.target.result);
-    reader.readAsArrayBuffer(file);
-  } else {
-    showImportMsg("Unsupported file type. Use CSV, Excel (.xlsx), or .txt", "error");
-  }
-}
+    <!-- Test accounts — only visible when DEV_MODE = true -->
+    <div class="test-accounts" id="test-accounts" style="display:none">
+      <div class="test-accounts-label">
+        <span>— or use a test account —</span>
+      </div>
+      <button class="test-account-btn" id="test-btn" onclick="loginAsTestAccount()">
+        <div class="test-account-avatar" id="test-avatar">W</div>
+        <div class="test-account-info">
+          <strong id="test-account-name">Warren (Admin)</strong>
+          <span id="test-account-email">warren.admin@acity.edu.gh</span>
+        </div>
+        <span class="test-account-tag">Test</span>
+      </button>
+    </div>
 
-// ── Parse CSV / TXT ───────────────────────────────────────────
-function parseCSV(text) {
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
-  if (!lines.length) { showImportMsg("File is empty", "error"); return; }
+    <div id="login-error" class="login-error hidden"></div>
+  </div>
+</div>
 
-  // Detect delimiter (comma or semicolon or tab)
-  const delim = lines[0].includes("\t") ? "\t"
-    : lines[0].includes(";") ? ";" : ",";
+<!-- ══ MAIN APP ══ -->
+<div id="app" class="hidden">
 
-  const rows = lines.map(l =>
-    l.split(delim).map(v => v.trim().replace(/^"|"$/g, "").trim())
-  );
-  buildPreview(rows);
-}
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-logo">
+        <div class="logo-icon"><i class="ti ti-building-community"></i></div>
+        <div class="logo-text">
+          <span class="logo-name" id="hostel-name">Academic City Hostel</span>
+          <span class="logo-sub" id="header-sub">Visitor Register</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="user-role-chip" id="user-role-chip"></div>
+        <div class="user-chip">
+          <div class="user-avatar" id="user-avatar"></div>
+          <span id="user-name-short"></span>
+        </div>
+        <button class="icon-btn" onclick="signOut()" title="Sign out of app">
+          <i class="ti ti-logout"></i>
+        </button>
+      </div>
+    </div>
+  </header>
 
-// ── Parse Excel ───────────────────────────────────────────────
-function parseExcel(buffer) {
-  try {
-    const wb   = XLSX.read(buffer, { type: "array" });
-    const ws   = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_array(ws, { defval: "" });
-    buildPreview(rows);
-  } catch(e) {
-    showImportMsg("Could not read Excel file: " + e.message, "error");
-  }
-}
+  <!-- ══ VISITOR VIEW ══ -->
+  <div id="visitor-app">
 
-// ── Build preview from raw rows ───────────────────────────────
-// Auto-detects which column is name / email / room / hostel
-function buildPreview(rows) {
-  if (rows.length < 2) {
-    showImportMsg("File needs at least a header row and one data row", "error");
-    return;
-  }
+    <!-- Success screen -->
+    <div id="success-screen" class="success-screen hidden">
+      <div class="success-icon"><i class="ti ti-circle-check"></i></div>
+      <h2 class="success-title" id="success-title">Signed in!</h2>
+      <p class="success-msg"  id="success-msg"></p>
+      <p class="success-time" id="success-time"></p>
+      <button class="success-btn" onclick="hideSuccess()">Done</button>
+    </div>
 
-  // Detect header row (first row)
-  const header = rows[0].map(h => h.toString().toLowerCase().trim());
+    <!-- Main visitor form -->
+    <div id="visitor-form" class="container">
+      <div class="hero">
+        <div class="hero-icon" id="visitor-hero-icon"><i class="ti ti-door-enter"></i></div>
+        <h1 class="hero-title">Welcome, <span id="visitor-first-name">there</span></h1>
+        <p class="hero-sub">Sign in when you arrive, sign out when you leave</p>
+      </div>
 
-  // Find column indices — flexible matching
-  const colName   = findCol(header, ["name","full name","fullname","student name","resident name"]);
-  const colEmail  = findCol(header, ["email","e-mail","mail","school email","acity email"]);
-  const colRoom   = findCol(header, ["room","room no","room number","room #","hall room"]);
-  const colHostel = findCol(header, ["hostel","hall","block","hostel name"]);
+      <div class="form-card">
 
-  // If no header match, assume columns in order: Name, Email, Room, Hostel
-  const iName   = colName   >= 0 ? colName   : 0;
-  const iEmail  = colEmail  >= 0 ? colEmail  : 1;
-  const iRoom   = colRoom   >= 0 ? colRoom   : 2;
-  const iHostel = colHostel >= 0 ? colHostel : 3;
+        <!-- ── SECTION 1: Visitor identity ── -->
+        <div class="autofill-banner" id="autofill-banner">
+          <i class="ti ti-user-check"></i>
+          <div>
+            <strong id="autofill-name"></strong>
+            <span id="autofill-email"></span>
+          </div>
+          <span class="autofill-badge">Auto-filled</span>
+        </div>
 
-  importRows   = [];
-  importErrors = [];
+        <!-- Outsider name (manual) -->
+        <div class="form-section" id="outsider-name-section" style="display:none">
+          <div class="form-section-head">
+            <div class="form-section-icon blue"><i class="ti ti-user"></i></div>
+            <span>Your details</span>
+          </div>
+          <div class="field">
+            <label for="o-name">Full name</label>
+            <input id="o-name" type="text" placeholder="Your full name" autocomplete="name" />
+          </div>
+        </div>
 
-  const dataRows = rows.slice(1).filter(r => r.some(v => v.toString().trim()));
+        <div class="form-divider"></div>
 
-  dataRows.forEach((row, idx) => {
-    const name   = (row[iName]   || "").toString().trim();
-    const email  = (row[iEmail]  || "").toString().trim().toLowerCase();
-    const room   = (row[iRoom]   || "").toString().trim().toUpperCase();
-    const hostel = normaliseHostel((row[iHostel] || "").toString().trim());
+        <!-- ── SECTION 2: Contact + Hostel ── -->
+        <div class="form-section">
+          <div class="form-section-head">
+            <div class="form-section-icon teal"><i class="ti ti-phone"></i></div>
+            <span>Contact &amp; hostel</span>
+          </div>
 
-    const errors = [];
-    if (!name)                          errors.push("missing name");
-    if (!email)                         errors.push("missing email");
-    else if (!email.includes("@"))      errors.push("invalid email");
-    if (!room)                          errors.push("missing room");
-    if (!hostel)                        errors.push("missing/unknown hostel");
+          <div class="field">
+            <label>Phone number <span class="req">*</span></label>
+            <div class="phone-picker-wrap">
+              <button type="button" class="country-picker-btn" id="country-picker-btn"
+                onclick="toggleCountryDropdown()">
+                <span id="cp-flag">🇬🇭</span>
+                <span id="cp-code">+233</span>
+                <i class="ti ti-chevron-down cp-arrow"></i>
+              </button>
+              <input id="v-phone-number" type="tel" class="phone-number-input"
+                placeholder="XX XXX XXXX"
+                oninput="onPhoneInput(this)"
+                onkeypress="return /[0-9]/.test(event.key)" />
+            </div>
+            <div id="country-dropdown" class="country-dropdown hidden">
+              <div class="country-search-wrap">
+                <i class="ti ti-search"></i>
+                <input type="text" id="country-search" placeholder="Search country…"
+                  oninput="filterCountries(this.value)" onclick="event.stopPropagation()" />
+              </div>
+              <div id="country-list" class="country-list"></div>
+            </div>
+            <div class="phone-hint" id="phone-hint"></div>
+          </div>
+          <!-- Hidden combined phone value -->
+          <input type="hidden" id="v-phone" />
 
-    importRows.push({ name, email, room, hostel, errors, rowNum: idx + 2 });
-  });
+          <div class="field">
+            <label>Hostel <span class="req">*</span></label>
+            <div class="radio-group">
+              <label class="radio-option" id="hostel-a-label">
+                <input type="radio" name="hostel" id="hostel-a" value="Hostel A" onchange="onHostelChange()" />
+                <span class="radio-box">
+                  <i class="ti ti-building"></i>
+                  <strong>Hostel A</strong>
+                </span>
+              </label>
+              <label class="radio-option" id="hostel-b-label">
+                <input type="radio" name="hostel" id="hostel-b" value="Hostel B" onchange="onHostelChange()" />
+                <span class="radio-box">
+                  <i class="ti ti-building"></i>
+                  <strong>Hostel B</strong>
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
 
-  renderPreview();
-}
+        <div class="form-divider"></div>
 
-function findCol(header, keywords) {
-  for (const kw of keywords) {
-    const i = header.findIndex(h => h.includes(kw));
-    if (i >= 0) return i;
-  }
-  return -1;
-}
+        <!-- ── SECTION 3: Who to visit — room first, then resident ── -->
+        <div class="form-section">
+          <div class="form-section-head">
+            <div class="form-section-icon amber"><i class="ti ti-home"></i></div>
+            <span>Who are you visiting?</span>
+          </div>
 
-function normaliseHostel(raw) {
-  const l = raw.toLowerCase();
-  if (l.includes("a") && !l.includes("b")) return "Hostel A";
-  if (l.includes("b") && !l.includes("a")) return "Hostel B";
-  if (l === "hostel a" || l === "a")       return "Hostel A";
-  if (l === "hostel b" || l === "b")       return "Hostel B";
-  return raw ? raw : "";   // pass through if unclear — flagged as error
-}
+          <!-- Step 1: enter room number (only after hostel picked) -->
+          <div class="field">
+            <label for="room-input">Room number <span class="req">*</span></label>
+            <div class="search-wrap">
+              <i class="ti ti-door search-icon"></i>
+              <input id="room-input" type="text" placeholder="Pick a hostel first, then enter room"
+                autocomplete="off" oninput="onRoomInput(this.value)" />
+            </div>
+          </div>
 
-// ── Render preview table ──────────────────────────────────────
-function renderPreview() {
-  const valid   = importRows.filter(r => r.errors.length === 0);
-  const invalid = importRows.filter(r => r.errors.length  > 0);
+          <!-- Step 2: residents in that room appear as option cards -->
+          <div id="room-residents" class="room-residents hidden"></div>
 
-  document.getElementById("import-preview-count").textContent =
-    `${importRows.length} rows found — ${valid.length} valid, ${invalid.length} with issues`;
+          <!-- Selected resident — styled card -->
+          <div id="selected-resident" class="selected-resident-card hidden">
+            <div class="src-tick"><i class="ti ti-circle-check"></i></div>
+            <div class="src-avatar" id="sel-avatar"></div>
+            <div class="src-body">
+              <div class="src-label">Visiting</div>
+              <div class="src-name" id="sel-name"></div>
+              <div class="src-meta" id="sel-room"></div>
+            </div>
+            <button class="src-change" onclick="clearResident()">
+              <i class="ti ti-pencil"></i> Change
+            </button>
+          </div>
+        </div>
 
-  const tbody = document.getElementById("import-tbody");
-  tbody.innerHTML = importRows.map((r, i) => {
-    const ok  = r.errors.length === 0;
-    const cls = ok ? "irow-ok" : "irow-err";
-    return `<tr class="${cls}">
-      <td class="irow-num">${r.rowNum}</td>
-      <td>${r.name  || '<span class="irow-missing">—</span>'}</td>
-      <td class="irow-email">${r.email || '<span class="irow-missing">—</span>'}</td>
-      <td>${r.room  || '<span class="irow-missing">—</span>'}</td>
-      <td>${r.hostel|| '<span class="irow-missing">—</span>'}</td>
-      <td>${ok
-        ? '<span class="irow-status-ok"><i class="ti ti-check"></i> Ready</span>'
-        : `<span class="irow-status-err"><i class="ti ti-alert-circle"></i> ${r.errors.join(", ")}</span>`}
-      </td>
-    </tr>`;
-  }).join("");
+        <div class="form-divider"></div>
 
-  const btn = document.getElementById("import-go-btn");
-  if (btn) {
-    btn.textContent = valid.length
-      ? `Import ${valid.length} resident${valid.length !== 1 ? "s" : ""}`
-      : "No valid rows";
-    btn.disabled = valid.length === 0;
-  }
+        <!-- ── SECTION 4: ID verification ── -->
+        <div class="form-section" id="id-section">
+          <div class="form-section-head">
+            <div class="form-section-icon purple"><i class="ti ti-id-badge"></i></div>
+            <span>ID verification</span>
+          </div>
 
-  document.getElementById("import-preview").classList.remove("hidden");
-  document.getElementById("import-msg").classList.add("hidden");
-}
+          <div class="field">
+            <label>ID type <span class="req">*</span></label>
+            <div class="id-type-grid">
+              <button class="id-type-btn" data-id="Ghana Card"       onclick="selectIdType(this)"><i class="ti ti-credit-card"></i> Ghana Card</button>
+              <button class="id-type-btn" data-id="Student ID"       onclick="selectIdType(this)"><i class="ti ti-school"></i> Student ID</button>
+              <button class="id-type-btn" data-id="Passport"         onclick="selectIdType(this)"><i class="ti ti-passport"></i> Passport</button>
+              <button class="id-type-btn" data-id="Voter's ID"       onclick="selectIdType(this)"><i class="ti ti-file-check"></i> Voter's ID</button>
+              <button class="id-type-btn" data-id="Driver's License" onclick="selectIdType(this)"><i class="ti ti-car"></i> Driver's License</button>
+              <button class="id-type-btn" data-id="Other"            onclick="selectIdType(this)"><i class="ti ti-dots"></i> Other</button>
+            </div>
+          </div>
 
-// ── Run the actual import ─────────────────────────────────────
-async function runImport() {
-  if (!firebaseDB) {
-    showImportMsg("Not connected to Firebase. Check your config.", "error");
-    return;
-  }
+          <!-- Photo upload — appears after selecting ID type -->
+          <div class="field hidden" id="id-upload-field">
+            <label id="id-upload-label">Upload photo of your ID <span class="req">*</span></label>
 
-  const valid = importRows.filter(r => r.errors.length === 0);
-  if (!valid.length) return;
+            <!-- Hidden file inputs — one for camera, one for gallery -->
+            <input type="file" id="id-file-camera"  accept="image/*" capture="environment" style="display:none" onchange="onIdPhotoSelected(this)" />
+            <input type="file" id="id-file-gallery" accept="image/*" style="display:none" onchange="onIdPhotoSelected(this)" />
 
-  const btn = document.getElementById("import-go-btn");
-  if (btn) { btn.disabled = true; btn.textContent = "Importing…"; }
+            <!-- Upload buttons -->
+            <div class="id-upload-btns" id="id-upload-btns">
+              <button class="id-upload-btn" onclick="document.getElementById('id-file-camera').click()">
+                <i class="ti ti-camera"></i>
+                <span>Take photo</span>
+              </button>
+              <button class="id-upload-btn" onclick="document.getElementById('id-file-gallery').click()">
+                <i class="ti ti-photo"></i>
+                <span>Choose from gallery</span>
+              </button>
+            </div>
 
-  const progress    = document.getElementById("import-progress");
-  const progressBar = document.getElementById("import-progress-bar");
-  const progressLbl = document.getElementById("import-progress-label");
-  progress.classList.remove("hidden");
+            <!-- Preview after photo selected -->
+            <div class="id-preview-wrap hidden" id="id-preview-wrap">
+              <img id="id-preview" class="id-preview" alt="ID preview" />
+              <button class="id-retake-btn" id="id-retake-btn" onclick="retakeIdPhoto()">
+                <i class="ti ti-refresh"></i> Retake / Change
+              </button>
+            </div>
+          </div>
+        </div>
 
-  let done = 0, skipped = 0, added = 0;
+        <!-- Sign In button -->
+        <div class="signin-only-btn-wrap">
+          <button id="btn-sign-in" class="btn-sign-in-full" onclick="doSignIn()">
+            <i class="ti ti-login"></i> Sign In
+          </button>
+        </div>
+      </div>
 
-  for (const r of valid) {
-    const key = r.email.replace(/[.@]/g, "_");
+      <!-- Sign OUT card — request PIN from admin -->
+      <div class="signout-card" id="signout-card">
+        <div class="signout-card-header">
+          <div class="signout-card-icon so-icon"><i class="ti ti-door-exit"></i></div>
+          <div>
+            <div class="signout-card-title">Ready to leave?</div>
+            <div class="signout-card-sub">Request a code from the admin to sign out</div>
+          </div>
+        </div>
 
-    // Skip duplicates already in Firebase
-    if (residentsCache[key]) {
-      skipped++;
-    } else {
-      const resident = { name: r.name, email: r.email, room: r.room, hostel: r.hostel };
-      await firebaseDB.ref("residents/" + key).set(resident);
-      residentsCache[key] = resident;
-      allResidents[key]   = resident;
-      added++;
+        <!-- Stored visit info -->
+        <div class="stored-visit-info hidden" id="stored-visit-info">
+          <div class="svi-row"><i class="ti ti-user"></i><span id="svi-name"></span></div>
+          <div class="svi-row"><i class="ti ti-home"></i><span id="svi-resident"></span></div>
+          <div class="svi-row"><i class="ti ti-door-enter"></i><span id="svi-timein"></span></div>
+        </div>
+
+        <!-- Step A: Request code button -->
+        <div id="so-request-step" class="signout-btn-wrap">
+          <button class="btn-request-code" onclick="requestSignOutCode()">
+            <i class="ti ti-key"></i> Request Sign-Out Code
+          </button>
+          <p class="so-hint">Admin will receive a 4-digit code to give you</p>
+        </div>
+
+        <!-- Step B: Enter code (shown after requesting) -->
+        <div id="so-enter-step" class="hidden">
+          <p class="so-code-label">Enter the 4-digit code from admin</p>
+          <div class="so-pin-dots">
+            <span id="sd0"></span><span id="sd1"></span>
+            <span id="sd2"></span><span id="sd3"></span>
+          </div>
+          <div class="so-countdown" id="so-countdown"></div>
+          <div class="so-keypad">
+            <button class="pin-key" onclick="soPinPress('1')">1</button>
+            <button class="pin-key" onclick="soPinPress('2')">2</button>
+            <button class="pin-key" onclick="soPinPress('3')">3</button>
+            <button class="pin-key" onclick="soPinPress('4')">4</button>
+            <button class="pin-key" onclick="soPinPress('5')">5</button>
+            <button class="pin-key" onclick="soPinPress('6')">6</button>
+            <button class="pin-key" onclick="soPinPress('7')">7</button>
+            <button class="pin-key" onclick="soPinPress('8')">8</button>
+            <button class="pin-key" onclick="soPinPress('9')">9</button>
+            <button class="pin-key pin-key-empty"></button>
+            <button class="pin-key" onclick="soPinPress('0')">0</button>
+            <button class="pin-key pin-key-del" onclick="soPinDel()"><i class="ti ti-backspace"></i></button>
+          </div>
+          <div class="so-pin-error hidden" id="so-pin-error">Wrong code — try again</div>
+          <button id="btn-sign-out" class="btn-sign-out-full" onclick="doSignOut()" disabled>
+            <i class="ti ti-logout"></i> Sign Out
+          </button>
+          <button class="cancel-pin-btn" onclick="cancelSignOutCode()">Cancel</button>
+        </div>
+      </div>
+
+    </div><!-- /visitor-form -->
+  </div><!-- /visitor-app -->
+
+  <!-- ══ ADMIN DASHBOARD ══ -->
+  <div id="admin-app" class="hidden">
+
+    <!-- Stacked notification area -->
+    <div id="notif-stack" class="notif-stack"></div>
+
+    <!-- Admin tab bar -->
+    <div class="admin-tabs">
+      <button class="admin-tab active" id="tab-dashboard" onclick="switchAdminTab('dashboard')">
+        <i class="ti ti-layout-dashboard"></i> Dashboard
+      </button>
+      <button class="admin-tab" id="tab-residents" onclick="switchAdminTab('residents')">
+        <i class="ti ti-users"></i> Residents
+      </button>
+    </div>
+
+    <!-- Dashboard panel -->
+    <div id="admin-dashboard-panel">
+    <div class="container">
+      <div class="coord-top">
+        <div>
+          <h1 class="coord-title">Dashboard</h1>
+          <p class="coord-sub" id="coord-date"></p>
+        </div>
+        <div class="coord-actions">
+          <span id="refresh-badge"><i class="ti ti-check"></i> Updated</span>
+          <button class="icon-btn" onclick="fetchEntries()" title="Refresh"><i class="ti ti-refresh"></i></button>
+          <button class="icon-btn" onclick="exportCSV()" title="Export CSV"><i class="ti ti-download"></i></button>
+          <a id="sheet-link" href="#" target="_blank" class="icon-btn hidden" title="Open Sheet"><i class="ti ti-table"></i></a>
+        </div>
+      </div>
+
+      <div id="sheet-banner" class="sheet-banner hidden">
+        <i class="ti ti-table"></i><span id="sheet-status"></span>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card teal-card">
+          <div class="stat-icon"><i class="ti ti-door-enter"></i></div>
+          <div class="stat-num" id="s-in">0</div>
+          <div class="stat-label">Inside now</div>
+        </div>
+        <div class="stat-card red-card">
+          <div class="stat-icon"><i class="ti ti-door-exit"></i></div>
+          <div class="stat-num" id="s-out">0</div>
+          <div class="stat-label">Left today</div>
+        </div>
+        <div class="stat-card gray-card">
+          <div class="stat-icon"><i class="ti ti-users"></i></div>
+          <div class="stat-num" id="s-total">0</div>
+          <div class="stat-label">Total today</div>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <button class="fpill active" onclick="setFilter('all',this)">All</button>
+        <button class="fpill" onclick="setFilter('in',this)"><span class="dot dot-teal"></span>Still inside</button>
+        <button class="fpill" onclick="setFilter('out',this)"><span class="dot dot-red"></span>Signed out</button>
+        <button class="fpill" onclick="setFilter('student',this)"><span class="dot dot-blue"></span>Students</button>
+        <button class="fpill" onclick="setFilter('outsider',this)"><span class="dot dot-amber"></span>Outsiders</button>
+      </div>
+
+      <!-- Search bar -->
+      <div class="admin-search-wrap">
+        <i class="ti ti-search admin-search-icon"></i>
+        <input id="admin-search" type="text" class="admin-search-input"
+          placeholder="Search by name, email or room…"
+          oninput="filterLog(this.value)" />
+        <button class="admin-search-clear hidden" id="admin-search-clear"
+          onclick="clearLogSearch()">
+          <i class="ti ti-x"></i>
+        </button>
+      </div>
+
+      <div class="log-list" id="log-list">
+        <div class="empty-state">
+          <i class="ti ti-clipboard-list"></i>
+          <p>No entries today</p>
+          <span>Sign-ins will appear here in real time</span>
+        </div>
+      </div>
+    </div><!-- /container -->
+    </div><!-- /admin-dashboard-panel -->
+
+    <!-- ── RESIDENTS MANAGEMENT PANEL ── -->
+    <div id="admin-residents-panel" class="hidden">
+      <div class="container">
+        <div class="coord-top">
+          <div>
+            <h1 class="coord-title">Residents</h1>
+            <p class="coord-sub">Manage who can be found in the visitor search</p>
+          </div>
+        </div>
+
+        <!-- ── IMPORT FROM FILE ── -->
+        <div class="import-card" id="import-card">
+          <div class="import-title">
+            <i class="ti ti-file-import"></i> Import residents from file
+          </div>
+          <div class="import-formats">Supports CSV, Excel (.xlsx), or plain text</div>
+
+          <!-- Drop zone -->
+          <div class="import-dropzone" id="import-dropzone"
+            onclick="document.getElementById('import-file-input').click()"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')"
+            ondrop="onImportFileDrop(event)">
+            <input type="file" id="import-file-input"
+              accept=".csv,.xlsx,.xls,.txt"
+              style="display:none" onchange="onImportFileSelected(this)" />
+            <i class="ti ti-upload"></i>
+            <div class="import-dz-text">Tap to upload or drag file here</div>
+            <div class="import-dz-sub">CSV, Excel or TXT — columns: Name, Email, Room, Hostel</div>
+          </div>
+
+          <!-- Preview table (shown after file parsed) -->
+          <div id="import-preview" class="hidden">
+            <div class="import-preview-header">
+              <div class="import-preview-title">
+                <i class="ti ti-table"></i>
+                <span id="import-preview-count"></span>
+              </div>
+              <div class="import-preview-actions">
+                <button class="import-clear-btn" onclick="clearImport()">
+                  <i class="ti ti-x"></i> Clear
+                </button>
+                <button class="import-go-btn" id="import-go-btn" onclick="runImport()">
+                  <i class="ti ti-database-import"></i> Import all
+                </button>
+              </div>
+            </div>
+            <div class="import-table-wrap">
+              <table class="import-table" id="import-table">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Room</th>
+                    <th>Hostel</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="import-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="import-msg" class="import-msg hidden"></div>
+          <div id="import-progress" class="import-progress hidden">
+            <div class="import-progress-bar" id="import-progress-bar"></div>
+            <div class="import-progress-label" id="import-progress-label"></div>
+          </div>
+        </div>
+
+        <div class="import-divider">
+          <span>— or add a single resident —</span>
+        </div>
+
+        <div class="add-resident-card">
+          <div class="add-resident-title"><i class="ti ti-user-plus"></i> Add a resident</div>
+          <div class="field">
+            <label for="res-add-name">Full name</label>
+            <input id="res-add-name" type="text" placeholder="e.g. Efua Asante" />
+          </div>
+          <div class="field">
+            <label for="res-add-email">ACity email</label>
+            <input id="res-add-email" type="email" placeholder="efua.asante@acity.edu.gh" />
+          </div>
+          <div class="field-row-two">
+            <div class="field">
+              <label for="res-add-room">Room</label>
+              <input id="res-add-room" type="text" placeholder="e.g. A101" />
+            </div>
+            <div class="field">
+              <label for="res-add-hostel">Hostel</label>
+              <select id="res-add-hostel" class="field-select">
+                <option value="">Select…</option>
+                <option value="Hostel A">Hostel A</option>
+                <option value="Hostel B">Hostel B</option>
+              </select>
+            </div>
+          </div>
+          <button class="add-resident-btn" onclick="adminAddResident()">
+            <i class="ti ti-plus"></i> Add Resident
+          </button>
+          <div id="add-resident-msg" class="add-resident-msg hidden"></div>
+        </div>
+
+        <div class="field" style="margin-bottom:16px">
+          <div class="search-wrap">
+            <i class="ti ti-search search-icon"></i>
+            <input id="res-search" type="text" placeholder="Search residents…"
+              oninput="filterResidentList(this.value)" />
+          </div>
+        </div>
+
+        <div id="resident-list" class="resident-list">
+          <div class="empty-state">
+            <i class="ti ti-users"></i>
+            <p>No residents yet</p>
+            <span>Add residents above</span>
+          </div>
+        </div>
+      </div>
+    </div><!-- /admin-residents-panel -->
+
+  </div><!-- /admin-app -->
+
+</div><!-- /app -->
+
+<!-- ══ ADMIN SIGN-OUT CODE POPUP ══ -->
+<div id="admin-signout-overlay" class="admin-signout-overlay hidden">
+  <div class="admin-signout-popup">
+    <div class="asc-header">
+      <div class="asc-icon"><i class="ti ti-key"></i></div>
+      <div>
+        <div class="asc-title">Sign-Out Code Request</div>
+        <div class="asc-sub" id="asc-visitor-name"></div>
+      </div>
+      <button class="asc-dismiss" onclick="dismissSignOutCode()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="asc-detail" id="asc-detail"></div>
+    <div class="asc-code-label">Give this code to the visitor</div>
+    <div class="asc-code" id="asc-code"></div>
+    <div class="asc-expires" id="asc-expires">Valid for 5 minutes</div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+
+
+<!-- SheetJS for Excel reading -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="db.js"></script>
+<script src="phone.js"></script>
+<script src="import.js"></script>
+<script src="app.js"></script>
+<!-- Watermark — obfuscated -->
+<div id="wm" class="wm"></div>
+
+<script>
+// Watermark — do not remove
+(function(){
+  var e=document.getElementById('wm');
+  if(!e)return;
+  var p=[77,97,100,101,32,98,121,32,87,97,114,114,101,110,32,69,115,111,110,117];
+  e.textContent=p.map(function(c){return String.fromCharCode(c);}).join('');
+  // Re-inject if removed
+  var o=new MutationObserver(function(){
+    if(!document.getElementById('wm')){
+      var n=document.createElement('div');
+      n.id='wm';n.className='wm';
+      n.textContent=p.map(function(c){return String.fromCharCode(c);}).join('');
+      document.body.appendChild(n);
     }
+  });
+  o.observe(document.body,{childList:true,subtree:true});
+})();
+</script>
 
-    done++;
-    const pct = Math.round((done / valid.length) * 100);
-    progressBar.style.width = pct + "%";
-    progressLbl.textContent =
-      `${done} / ${valid.length} processed (${added} added, ${skipped} already existed)`;
-
-    // Small yield so UI stays responsive
-    if (done % 10 === 0) await new Promise(r => setTimeout(r, 0));
-  }
-
-  progress.classList.add("hidden");
-  renderResidentList();
-
-  const msg = `✓ Import complete — ${added} residents added${skipped ? ", " + skipped + " already existed" : ""}.`;
-  showImportMsg(msg, "success");
-
-  // Reset file input but keep preview visible
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-check"></i> Done'; }
-}
-
-function clearImport() {
-  importRows = [];
-  importErrors = [];
-  document.getElementById("import-preview").classList.add("hidden");
-  document.getElementById("import-msg").classList.add("hidden");
-  document.getElementById("import-progress").classList.add("hidden");
-  document.getElementById("import-file-input").value = "";
-  const btn = document.getElementById("import-go-btn");
-  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-database-import"></i> Import all'; }
-}
-
-function showImportMsg(text, type) {
-  const el = document.getElementById("import-msg");
-  el.textContent = text;
-  el.className   = "import-msg " + (type === "success" ? "import-msg-ok" : "import-msg-err");
-  el.classList.remove("hidden");
-}
+</body>
+</html>

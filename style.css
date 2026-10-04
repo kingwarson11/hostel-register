@@ -3308,7 +3308,3 @@ body {
 }
 .res-av-a { background: linear-gradient(135deg,var(--brand-light),var(--brand-mid)); color:var(--brand-dark); }
 .res-av-b { background: linear-gradient(135deg,#dbeafe,#bfdbfe); color:#1d4ed8; }
-
-/* Daily summary mail button */
-.icon-btn-mail { background: var(--brand-light) !important; color: var(--brand) !important; }
-.icon-btn-mail:hover { background: var(--brand) !important; color: #fff !important; }

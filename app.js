@@ -97,49 +97,143 @@ function initVisitorForm() {
   const ub = document.getElementById("id-upload-btns");
   if (ub) ub.classList.remove("hidden");
 
-  if (savedFormData) restoreFormData();
+  // Check in-memory first, then localStorage fast-track
+  if (savedFormData) {
+    restoreFormData(savedFormData);
+  } else {
+    const fasttrack = loadFastTrackData();
+    if (fasttrack) {
+      // Show fast-track banner
+      showFastTrackBanner(fasttrack);
+    }
+  }
 
   loadResidents();
   resetSignOutCard();
   loadStoredVisitInfo();
 }
 
+function showFastTrackBanner(data) {
+  // Remove any existing banner
+  document.getElementById("fasttrack-banner")?.remove();
+
+  const banner = document.createElement("div");
+  banner.id        = "fasttrack-banner";
+  banner.className = "fasttrack-banner";
+  banner.innerHTML = `
+    <div class="ftb-icon"><i class="ti ti-bolt"></i></div>
+    <div class="ftb-body">
+      <div class="ftb-title">Welcome back!</div>
+      <div class="ftb-sub">Pre-fill your last visit details?</div>
+    </div>
+    <div class="ftb-actions">
+      <button class="ftb-yes" onclick="applyFastTrack()">Yes, fill it in</button>
+      <button class="ftb-no"  onclick="dismissFastTrack()"><i class="ti ti-x"></i></button>
+    </div>
+  `;
+  // Insert at top of form-card
+  const card = document.querySelector(".form-card");
+  if (card) card.insertBefore(banner, card.firstChild);
+
+  // Store for when user taps yes
+  banner._data = data;
+}
+
+function applyFastTrack() {
+  const banner = document.getElementById("fasttrack-banner");
+  if (!banner) return;
+  restoreFormData(banner._data);
+  banner.remove();
+  showToast("Details pre-filled from your last visit ✓", "toast-in");
+}
+
+function dismissFastTrack() {
+  document.getElementById("fasttrack-banner")?.remove();
+}
+
+// ── Save form data — in memory + localStorage for fast-track ──
 function saveFormData() {
   savedFormData = {
-    phone:    document.getElementById("v-phone").value.trim(),
+    phone:    (document.getElementById("v-phone")?.value || "").trim(),
+    phoneNum: (document.getElementById("v-phone-number")?.value || "").trim(),
     hostel:   document.querySelector('input[name="hostel"]:checked')?.value || "",
     room:     document.getElementById("room-input").value.trim(),
     resident: selectedResident,
     idType:   selectedIdType,
     idPhoto:  idPhotoBase64,
   };
+  // Persist to localStorage for next visit (exclude large photo)
+  try {
+    const toStore = { ...savedFormData, idPhoto: null };
+    localStorage.setItem("hostel_fasttrack_" + currentUser.email, JSON.stringify(toStore));
+  } catch(e) {}
 }
 
-function restoreFormData() {
-  if (!savedFormData) return;
-  if (savedFormData.phone) document.getElementById("v-phone").value = savedFormData.phone;
-  if (savedFormData.room)  document.getElementById("room-input").value = savedFormData.room;
-  if (savedFormData.hostel) {
-    const radio = document.querySelector(`input[name="hostel"][value="${savedFormData.hostel}"]`);
+// Load fast-track data from localStorage for returning visitors
+function loadFastTrackData() {
+  if (!currentUser?.email) return null;
+  try {
+    const raw = localStorage.getItem("hostel_fasttrack_" + currentUser.email);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function restoreFormData(data) {
+  const d = data || savedFormData;
+  if (!d) return;
+
+  // Phone
+  if (d.phoneNum && document.getElementById("v-phone-number")) {
+    document.getElementById("v-phone-number").value = d.phoneNum;
+    if (typeof updateHiddenPhone === "function") updateHiddenPhone();
+    if (typeof updatePhoneHint === "function" && typeof selectedCountry !== "undefined") {
+      updatePhoneHint(selectedCountry, d.phoneNum);
+    }
+  } else if (d.phone && document.getElementById("v-phone")) {
+    document.getElementById("v-phone").value = d.phone;
+  }
+
+  // Room
+  if (d.room) document.getElementById("room-input").value = d.room;
+
+  // Hostel
+  if (d.hostel) {
+    const radio = document.querySelector(`input[name="hostel"][value="${d.hostel}"]`);
     if (radio) { radio.checked = true; onHostelChange(); }
   }
-  if (savedFormData.resident) {
-    selectedResident = savedFormData.resident;
-    document.getElementById("sel-avatar").textContent = initials(selectedResident.name);
-    document.getElementById("sel-name").textContent   = selectedResident.name;
-    document.getElementById("sel-room").textContent   = "Room " + selectedResident.room;
-    document.getElementById("selected-resident").classList.remove("hidden");
+
+  // Resident
+  if (d.resident) {
+    selectedResident = d.resident;
+    const avatarEl = document.getElementById("sel-avatar");
+    const nameEl   = document.getElementById("sel-name");
+    const roomEl2  = document.getElementById("sel-room");
+    const card     = document.getElementById("selected-resident");
+    if (avatarEl) {
+      avatarEl.textContent = initials(selectedResident.name);
+      avatarEl.className = "src-avatar " +
+        (selectedResident.hostel === "Hostel B" ? "src-avatar-b" : "src-avatar-a");
+    }
+    if (nameEl)  nameEl.textContent  = selectedResident.name;
+    if (roomEl2) roomEl2.textContent =
+      `Room ${selectedResident.room} · ${selectedResident.hostel || ""} · ${selectedResident.email}`;
+    if (card) card.classList.remove("hidden");
   }
-  if (savedFormData.idType) {
-    selectedIdType = savedFormData.idType;
+
+  // ID type
+  if (d.idType) {
+    selectedIdType = d.idType;
     document.querySelectorAll(".id-type-btn").forEach(b => {
       if (b.dataset.id === selectedIdType) b.classList.add("selected");
     });
     document.getElementById("id-upload-field").classList.remove("hidden");
-    document.getElementById("id-upload-label").textContent = `Photo of your ${selectedIdType} *`;
+    const lbl = document.getElementById("id-upload-label");
+    if (lbl) lbl.textContent = `Photo of your ${selectedIdType} *`;
   }
-  if (savedFormData.idPhoto) {
-    idPhotoBase64 = savedFormData.idPhoto;
+
+  // Photo only from in-memory (not stored in localStorage)
+  if (d.idPhoto) {
+    idPhotoBase64 = d.idPhoto;
     const prev = document.getElementById("id-preview");
     if (prev) prev.src = idPhotoBase64;
     const pw = document.getElementById("id-preview-wrap");
@@ -251,11 +345,18 @@ let signingIn = false;  // guard against double-tap
 async function doSignIn() {
   if (signingIn) return;
   const fullName = currentUser.name;
-  const phone    = document.getElementById("v-phone").value.trim();
-  const hostel   = document.querySelector('input[name="hostel"]:checked')?.value;
-  const room     = document.getElementById("room-input").value.trim().toUpperCase();
 
-  if (!phone)           { showToast("Please enter your phone number", "toast-err"); return; }
+  // Phone — read from hidden combined field (set by phone.js country picker)
+  // Fall back to direct input if phone.js isn't loaded
+  const phoneHidden = document.getElementById("v-phone");
+  const phoneNum    = document.getElementById("v-phone-number");
+  const phone = (phoneHidden?.value || phoneNum?.value || "").trim();
+
+  const hostel = document.querySelector('input[name="hostel"]:checked')?.value;
+  const room   = document.getElementById("room-input").value.trim().toUpperCase();
+  const today  = todayStr();
+
+  if (!phone || phone.length < 5) { showToast("Please enter your phone number", "toast-err"); return; }
   if (typeof isPhoneValid === "function" && !isPhoneValid()) {
     showToast("Phone number length is incorrect for the selected country", "toast-err"); return;
   }
@@ -264,8 +365,6 @@ async function doSignIn() {
   if (!room)            { showToast("Please enter the room number", "toast-err"); return; }
   if (!selectedIdType)  { showToast("Please select your ID type", "toast-err"); return; }
   if (!idPhotoBase64)   { showToast("Please upload a photo of your ID", "toast-err"); return; }
-
-  // No restriction — visitor can sign in multiple times
 
   const now   = new Date();
   const entry = {
@@ -513,6 +612,10 @@ function initAdminDashboard() {
     if (l) { l.href = SHEET_URL; l.classList.remove("hidden"); }
   }
 
+  // Daily summary button
+  const summaryBtn = document.getElementById("daily-summary-btn");
+  if (summaryBtn) summaryBtn.addEventListener("click", sendDailySummary);
+
   // Live entries listener — rebuilds the log every time Firebase updates
   listenForEntries(entries => {
     allEntries = entries;
@@ -742,15 +845,19 @@ function renderResidentList() {
 
   el.innerHTML = list.map(([key, r]) => `
     <div class="resident-item">
-      <div class="resident-avatar">${initials(r.name)}</div>
+      <div class="resident-avatar ${r.hostel==='Hostel B'?'res-av-b':'res-av-a'}">${initials(r.name)}</div>
       <div class="resident-info">
         <div class="resident-name">${r.name}</div>
         <div class="resident-meta">${r.email}</div>
         <div class="resident-meta">Room ${r.room}${r.hostel?" · "+r.hostel:""}</div>
       </div>
-      <button class="resident-remove-btn" onclick="adminRemoveResident('${key}','${r.name.replace(/'/g,"\\'")}')">
-        <i class="ti ti-trash"></i>
-      </button>
+      <div class="resident-actions">
+        <button class="resident-history-btn" onclick="showResidentHistory('${key}')" title="Visit history">
+          <i class="ti ti-history"></i>
+        </button>
+        <button class="resident-remove-btn" onclick="adminRemoveResident('${key}','${r.name.replace(/'/g,"\\'")}')">\n          <i class="ti ti-trash"></i>
+        </button>
+      </div>
     </div>
   `).join("");
 }
@@ -832,6 +939,128 @@ function exportCSV() {
     download:`hostel-${new Date().toISOString().slice(0,10)}.csv`
   });
   a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RESIDENT VISIT HISTORY
+// ══════════════════════════════════════════════════════════════
+async function showResidentHistory(key) {
+  const resident = allResidents[key];
+  if (!resident) return;
+
+  // Show modal
+  document.getElementById("history-overlay").classList.remove("hidden");
+
+  // Header
+  const av = document.getElementById("hist-avatar");
+  av.textContent = initials(resident.name);
+  av.className   = "history-modal-avatar " +
+    (resident.hostel === "Hostel B" ? "hist-av-b" : "hist-av-a");
+
+  document.getElementById("hist-name").textContent =
+    resident.name;
+  document.getElementById("hist-meta").textContent =
+    `Room ${resident.room} · ${resident.hostel} · ${resident.email}`;
+  document.getElementById("hist-body").innerHTML =
+    `<div class="empty-state"><i class="ti ti-clock"></i><p>Loading…</p></div>`;
+  document.getElementById("hist-stats").innerHTML = "";
+
+  // Fetch all entries for this resident across all dates
+  if (!firebaseDB) return;
+  const snap = await firebaseDB.ref("entries")
+    .orderByChild("residentEmail").equalTo(resident.email)
+    .once("value");
+
+  const visits = Object.values(snap.val() || {})
+    .sort((a, b) => new Date(b.timeIn) - new Date(a.timeIn));
+
+  // Stats row
+  const totalIn   = visits.length;
+  const stillIn   = visits.filter(v => v.status === "in").length;
+  const students  = visits.filter(v => v.visitorRole === "student").length;
+  const outsiders = visits.filter(v => v.visitorRole === "outsider").length;
+
+  document.getElementById("hist-stats").innerHTML = `
+    <div class="hist-stat"><div class="hist-stat-val">${totalIn}</div><div class="hist-stat-lbl">Total visits</div></div>
+    <div class="hist-stat"><div class="hist-stat-val">${stillIn}</div><div class="hist-stat-lbl">Inside now</div></div>
+    <div class="hist-stat"><div class="hist-stat-val">${students}</div><div class="hist-stat-lbl">Students</div></div>
+    <div class="hist-stat"><div class="hist-stat-val">${outsiders}</div><div class="hist-stat-lbl">Guests</div></div>
+  `;
+
+  if (!visits.length) {
+    document.getElementById("hist-body").innerHTML =
+      `<div class="empty-state"><i class="ti ti-user-off"></i>
+       <p>No visits yet</p><span>No one has signed in to visit ${resident.name}</span></div>`;
+    return;
+  }
+
+  document.getElementById("hist-body").innerHTML = visits.map(v => {
+    const tag = v.visitorRole === "outsider"
+      ? `<span class="visitor-role-tag tag-outsider">Guest</span>`
+      : `<span class="visitor-role-tag tag-student">Student</span>`;
+    return `<div class="hist-visit-row">
+      <div class="hist-visit-avatar ${v.status==="in"?"av-in":"av-out"}">${initials(v.visitorName)}</div>
+      <div class="hist-visit-body">
+        <div class="hist-visit-name">${v.visitorName} ${tag}</div>
+        <div class="hist-visit-meta"><i class="ti ti-calendar"></i> ${v.date}</div>
+        <div class="hist-visit-meta"><i class="ti ti-mail"></i> ${v.visitorEmail}</div>
+        ${v.visitorPhone?`<div class="hist-visit-meta"><i class="ti ti-phone"></i> ${v.visitorPhone}</div>`:""}
+        ${v.idType?`<div class="hist-visit-meta"><i class="ti ti-id-badge"></i> ${v.idType}
+          ${v.idPhoto?`<a href="${v.idPhoto}" target="_blank" class="id-view-link">View ID</a>`:""}</div>`:""}
+      </div>
+      <div class="hist-visit-right">
+        <div class="hist-visit-time"><i class="ti ti-login"></i> ${v.timeInStr||fmtTime(v.timeIn)}</div>
+        ${v.timeOutStr?`<div class="hist-visit-time"><i class="ti ti-logout"></i> ${v.timeOutStr}</div>`:""}
+        <span class="pill ${v.status==="in"?"pill-in":"pill-out"}">${v.status==="in"?"Inside":"Left"}</span>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function closeHistoryModal() {
+  document.getElementById("history-overlay").classList.add("hidden");
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DAILY SUMMARY EMAIL
+//  Triggered by a button in the admin dashboard
+//  Actual email is sent via Google Apps Script
+// ══════════════════════════════════════════════════════════════
+async function sendDailySummary() {
+  const btn = document.getElementById("daily-summary-btn");
+  if (btn) { btn.disabled = true; btn.textContent = "Sending…"; }
+
+  const today    = todayStr();
+  const entries  = allEntries.length ? allEntries : await fetchAllEntries();
+  const inside   = entries.filter(e => e.status === "in");
+  const left     = entries.filter(e => e.status === "out");
+  const students  = entries.filter(e => e.visitorRole === "student");
+  const outsiders = entries.filter(e => e.visitorRole === "outsider");
+
+  const summary = {
+    date:      today,
+    total:     entries.length,
+    inside:    inside.length,
+    left:      left.length,
+    students:  students.length,
+    outsiders: outsiders.length,
+    adminEmail: ADMIN_EMAILS[0] || "",
+    hostelName: typeof HOSTEL_NAME !== "undefined" ? HOSTEL_NAME : "Hostel",
+  };
+
+  if (typeof SHEET_WEBAPP_URL === "string" && SHEET_WEBAPP_URL.startsWith("https://")) {
+    try {
+      const params = new URLSearchParams({ action: "dailySummary", ...summary });
+      await fetch(SHEET_WEBAPP_URL + "?" + params);
+      showToast("Daily summary sent to " + summary.adminEmail, "toast-in");
+    } catch(e) {
+      showToast("Could not send summary — check Apps Script URL", "toast-err");
+    }
+  } else {
+    showToast("Set SHEET_WEBAPP_URL in config.js to enable email summaries", "toast-err");
+  }
+
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-mail"></i> Send Summary'; }
 }
 
 // ── Init ──────────────────────────────────────────────────────

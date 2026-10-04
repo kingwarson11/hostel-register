@@ -404,6 +404,7 @@
           <span id="refresh-badge"><i class="ti ti-check"></i> Updated</span>
           <button class="icon-btn" onclick="fetchEntries()" title="Refresh"><i class="ti ti-refresh"></i></button>
           <button class="icon-btn" onclick="exportCSV()" title="Export CSV"><i class="ti ti-download"></i></button>
+          <button class="icon-btn icon-btn-mail" id="daily-summary-btn" onclick="sendDailySummary()" title="Send daily summary email"><i class="ti ti-mail"></i></button>
           <a id="sheet-link" href="#" target="_blank" class="icon-btn hidden" title="Open Sheet"><i class="ti ti-table"></i></a>
         </div>
       </div>
@@ -586,6 +587,29 @@
   </div><!-- /admin-app -->
 
 </div><!-- /app -->
+
+<!-- ══ RESIDENT VISIT HISTORY MODAL ══ -->
+<div id="history-overlay" class="history-overlay hidden" onclick="closeHistoryModal()">
+  <div class="history-modal" onclick="event.stopPropagation()">
+    <div class="history-modal-header">
+      <div class="history-modal-avatar" id="hist-avatar"></div>
+      <div class="history-modal-info">
+        <div class="history-modal-name" id="hist-name"></div>
+        <div class="history-modal-meta" id="hist-meta"></div>
+      </div>
+      <button class="history-modal-close" onclick="closeHistoryModal()">
+        <i class="ti ti-x"></i>
+      </button>
+    </div>
+    <div class="history-modal-stats" id="hist-stats"></div>
+    <div class="history-modal-body" id="hist-body">
+      <div class="empty-state">
+        <i class="ti ti-clock"></i>
+        <p>Loading visits…</p>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ══ ADMIN SIGN-OUT CODE POPUP ══ -->
 <div id="admin-signout-overlay" class="admin-signout-overlay hidden">

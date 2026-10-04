@@ -612,10 +612,6 @@ function initAdminDashboard() {
     if (l) { l.href = SHEET_URL; l.classList.remove("hidden"); }
   }
 
-  // Daily summary button
-  const summaryBtn = document.getElementById("daily-summary-btn");
-  if (summaryBtn) summaryBtn.addEventListener("click", sendDailySummary);
-
   // Live entries listener — rebuilds the log every time Firebase updates
   listenForEntries(entries => {
     allEntries = entries;
@@ -1021,47 +1017,7 @@ function closeHistoryModal() {
   document.getElementById("history-overlay").classList.add("hidden");
 }
 
-// ══════════════════════════════════════════════════════════════
-//  DAILY SUMMARY EMAIL
-//  Triggered by a button in the admin dashboard
-//  Actual email is sent via Google Apps Script
-// ══════════════════════════════════════════════════════════════
-async function sendDailySummary() {
-  const btn = document.getElementById("daily-summary-btn");
-  if (btn) { btn.disabled = true; btn.textContent = "Sending…"; }
 
-  const today    = todayStr();
-  const entries  = allEntries.length ? allEntries : await fetchAllEntries();
-  const inside   = entries.filter(e => e.status === "in");
-  const left     = entries.filter(e => e.status === "out");
-  const students  = entries.filter(e => e.visitorRole === "student");
-  const outsiders = entries.filter(e => e.visitorRole === "outsider");
-
-  const summary = {
-    date:      today,
-    total:     entries.length,
-    inside:    inside.length,
-    left:      left.length,
-    students:  students.length,
-    outsiders: outsiders.length,
-    adminEmail: ADMIN_EMAILS[0] || "",
-    hostelName: typeof HOSTEL_NAME !== "undefined" ? HOSTEL_NAME : "Hostel",
-  };
-
-  if (typeof SHEET_WEBAPP_URL === "string" && SHEET_WEBAPP_URL.startsWith("https://")) {
-    try {
-      const params = new URLSearchParams({ action: "dailySummary", ...summary });
-      await fetch(SHEET_WEBAPP_URL + "?" + params);
-      showToast("Daily summary sent to " + summary.adminEmail, "toast-in");
-    } catch(e) {
-      showToast("Could not send summary — check Apps Script URL", "toast-err");
-    }
-  } else {
-    showToast("Set SHEET_WEBAPP_URL in config.js to enable email summaries", "toast-err");
-  }
-
-  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-mail"></i> Send Summary'; }
-}
 
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {

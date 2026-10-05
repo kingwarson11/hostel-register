@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Academic City Hostel</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css" />
@@ -186,7 +186,8 @@
               <input id="v-phone-number" type="tel" class="phone-number-input"
                 placeholder="XX XXX XXXX"
                 oninput="onPhoneInput(this)"
-                onkeypress="return /[0-9]/.test(event.key)" />
+                inputmode="numeric"
+                pattern="[0-9]*" />
             </div>
             <div id="country-dropdown" class="country-dropdown hidden">
               <div class="country-search-wrap">

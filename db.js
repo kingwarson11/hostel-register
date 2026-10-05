@@ -203,21 +203,29 @@ function listenForEntries(callback) {
       const entries = Object.values(raw)
         .sort((a, b) => new Date(b.timeIn) - new Date(a.timeIn));
 
-      // Mark all current IDs as seen on first load
+      // Mark all current IDs as seen on first load (for notification dedup)
       if (!initialLoadDone) {
         entries.forEach(e => seenEntryIds.add(e.id));
         initialLoadDone = true;
       }
 
-      // Fetch ID photos and return
-      Promise.all(entries.map(async e => {
-        if (!e.idPhoto && firebaseDB) {
-          const ps = await firebaseDB.ref("id_photos/" + e.id).once("value");
-          const pd = ps.val();
-          if (pd) e.idPhoto = pd.photo;
+      // Render the log immediately — don't wait for photo fetches
+      callback(entries);
+
+      // Then fetch photos in background and cache them in idPhotoCache
+      // When admin taps "View ID", viewIdPhoto() reads from the cache
+      entries.forEach(async e => {
+        if (typeof idPhotoCache !== "undefined" && !idPhotoCache[e.id] && firebaseDB) {
+          try {
+            const ps = await firebaseDB.ref("id_photos/" + e.id).once("value");
+            const pd = ps.val();
+            if (pd && pd.photo) {
+              idPhotoCache[e.id] = pd.photo;
+              e.idPhoto = pd.photo; // also attach to entry object
+            }
+          } catch(err) {}
         }
-        return e;
-      })).then(callback);
+      });
     });
 }
 

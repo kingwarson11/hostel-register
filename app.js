@@ -1019,6 +1019,89 @@ function closeHistoryModal() {
 
 
 
+// ══════════════════════════════════════════════════════════════
+//  VIEW ID PHOTO — fetches from Firebase then opens in new tab
+//  Works cross-device: admin on laptop sees visitor's ID from phone
+// ══════════════════════════════════════════════════════════════
+
+// Cache of already-fetched photos: entryId → base64 string
+const idPhotoCache = {};
+
+async function viewIdPhoto(event, entryId) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  // Check in-memory cache first
+  if (idPhotoCache[entryId]) {
+    openPhotoTab(idPhotoCache[entryId]);
+    return;
+  }
+
+  // Check allEntries in memory
+  const entry = allEntries.find(e => e.id === entryId);
+  if (entry?.idPhoto) {
+    idPhotoCache[entryId] = entry.idPhoto;
+    openPhotoTab(entry.idPhoto);
+    return;
+  }
+
+  // Fetch from Firebase id_photos node
+  if (!firebaseDB) {
+    showToast("Not connected to database", "toast-err"); return;
+  }
+
+  showToast("Loading ID photo…", "toast-in");
+
+  try {
+    const snap = await firebaseDB.ref("id_photos/" + entryId).once("value");
+    const data = snap.val();
+    if (!data || !data.photo) {
+      showToast("ID photo not found", "toast-err"); return;
+    }
+    idPhotoCache[entryId] = data.photo;
+    openPhotoTab(data.photo);
+  } catch(e) {
+    showToast("Could not load ID photo", "toast-err");
+    console.error(e);
+  }
+}
+
+function openPhotoTab(base64) {
+  // Open base64 image in a new tab — works on desktop + mobile
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ID Photo</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; background:#111; }
+    body { display:flex; align-items:center; justify-content:center;
+           min-height:100vh; flex-direction:column; gap:16px; }
+    img  { max-width:100%; max-height:90vh; object-fit:contain;
+           border-radius:8px; box-shadow:0 8px 32px rgba(0,0,0,.6); }
+    p    { color:rgba(255,255,255,.4); font-size:12px; font-family:sans-serif; }
+  </style>
+</head>
+<body>
+  <img src="${base64}" alt="Visitor ID" />
+  <p>Visitor ID — Academic City Hostel Register</p>
+</body>
+</html>`;
+  const blob = new Blob([html], { type: "text/html" });
+  const url  = URL.createObjectURL(blob);
+  const tab  = window.open(url, "_blank");
+  if (!tab) {
+    // Popup blocked — fall back to download
+    const a = document.createElement("a");
+    a.href     = base64;
+    a.download = "visitor-id.jpg";
+    a.click();
+    showToast("Popup blocked — ID downloaded instead", "toast-in");
+  }
+  // Revoke URL after tab opens
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
   if (typeof HOSTEL_NAME !== "undefined") {

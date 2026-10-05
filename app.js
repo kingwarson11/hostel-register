@@ -366,6 +366,35 @@ async function doSignIn() {
   if (!selectedIdType)  { showToast("Please select your ID type", "toast-err"); return; }
   if (!idPhotoBase64)   { showToast("Please upload a photo of your ID", "toast-err"); return; }
 
+  // Block if already signed in (has open entry with status "in")
+  const existing = await fetchAllEntries();
+  const openEntry = existing.find(e =>
+    e.visitorEmail === currentUser.email && e.status === "in"
+  );
+  if (openEntry) {
+    signingIn = false;
+    // Show info screen — already signed in
+    const screen = document.getElementById("success-screen");
+    const icon   = screen?.querySelector(".success-icon i");
+    if (icon)  icon.className = "ti ti-info-circle";
+    const titleEl = document.getElementById("success-title");
+    const msgEl   = document.getElementById("success-msg");
+    const timeEl  = document.getElementById("success-time");
+    if (titleEl) titleEl.textContent = "Already signed in";
+    if (msgEl)   msgEl.textContent   =
+      `You signed in at ${openEntry.timeInStr} visiting ${openEntry.residentName}. Please sign out first before signing in again.`;
+    if (timeEl)  timeEl.textContent  = "";
+    if (screen)  {
+      screen.className = "success-screen success-in";
+      screen.classList.remove("hidden");
+    }
+    document.getElementById("visitor-form")?.classList.add("hidden");
+    // Load the open entry into sign-out card so they can sign out
+    activeEntry = openEntry;
+    showSignOutInfo(openEntry);
+    return;
+  }
+
   const now   = new Date();
   const entry = {
     id:            Date.now().toString(),
@@ -698,8 +727,7 @@ function renderLogs() {
         <div class="log-meta">→ <strong>${e.residentName}</strong> · Room <strong>${e.room}</strong>${e.hostel?` · ${e.hostel}`:""}</div>
         <div class="log-email"><i class="ti ti-mail"></i> ${e.visitorEmail}</div>
         ${e.visitorPhone?`<div class="log-phone"><i class="ti ti-phone"></i> ${e.visitorPhone}</div>`:""}
-        ${e.idType?`<div class="log-phone"><i class="ti ti-id-badge"></i> ${e.idType}
-          ${e.idPhoto?`<a href="${e.idPhoto}" target="_blank" class="id-view-link"><i class="ti ti-eye"></i> View ID</a>`:""}</div>`:""}
+        ${e.idType?`<div class="log-phone"><i class="ti ti-id-badge"></i> ${e.idType} <button class="id-view-link" onclick="viewIdPhoto(event,'${e.id}')"><i class="ti ti-eye"></i> View ID</button></div>`:""}
       </div>
       <div class="log-right">
         <div class="log-time"><i class="ti ti-login"></i> ${e.timeInStr||fmtTime(e.timeIn)}</div>
@@ -787,7 +815,7 @@ function pushNotif(entry) {
         <div class="np-detail">→ ${entry.residentName} · Room ${entry.room}${entry.hostel?" · "+entry.hostel:""}</div>
         <div class="np-time">At ${isIn?(entry.timeInStr||fmtTime(entry.timeIn)):(entry.timeOutStr||fmtTime(new Date()))}</div>
         ${entry.idType?`<div class="np-id"><i class="ti ti-id-badge"></i> ${entry.idType}
-          ${entry.idPhoto?`<a href="${entry.idPhoto}" target="_blank" class="id-view-link np-id-link">View ID</a>`:""}</div>`:""}
+          ${entry.idPhoto?`<button class="id-view-link np-id-link" onclick="viewIdPhoto(event,'${entry.id}')">View ID</button>`:""}</div>`:""}
       </div>
       <button class="np-close" onclick="dismissNotif('${id}')"><i class="ti ti-x"></i></button>
     </div>
@@ -1002,7 +1030,7 @@ async function showResidentHistory(key) {
         <div class="hist-visit-meta"><i class="ti ti-mail"></i> ${v.visitorEmail}</div>
         ${v.visitorPhone?`<div class="hist-visit-meta"><i class="ti ti-phone"></i> ${v.visitorPhone}</div>`:""}
         ${v.idType?`<div class="hist-visit-meta"><i class="ti ti-id-badge"></i> ${v.idType}
-          ${v.idPhoto?`<a href="${v.idPhoto}" target="_blank" class="id-view-link">View ID</a>`:""}</div>`:""}
+          ${v.idPhoto?`<button class="id-view-link" onclick="viewIdPhoto(event,'${v.id}')">View ID</button>`:""}</div>`:""}
       </div>
       <div class="hist-visit-right">
         <div class="hist-visit-time"><i class="ti ti-login"></i> ${v.timeInStr||fmtTime(v.timeIn)}</div>

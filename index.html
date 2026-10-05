@@ -584,6 +584,24 @@
       </div>
     </div><!-- /admin-residents-panel -->
 
+  <!-- Admin sign-out code popup — admin-app only, visitor never sees this -->
+  <div id="admin-signout-overlay" class="admin-signout-overlay hidden">
+    <div class="admin-signout-popup">
+      <div class="asc-header">
+        <div class="asc-icon"><i class="ti ti-key"></i></div>
+        <div>
+          <div class="asc-title">Sign-Out Code Request</div>
+          <div class="asc-sub" id="asc-visitor-name"></div>
+        </div>
+        <button class="asc-dismiss" onclick="dismissSignOutCode()"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="asc-detail" id="asc-detail"></div>
+      <div class="asc-code-label">Give this code to the visitor</div>
+      <div class="asc-code" id="asc-code"></div>
+      <div class="asc-expires" id="asc-expires">Valid for 2 minutes</div>
+    </div>
+  </div>
+
   </div><!-- /admin-app -->
 
 </div><!-- /app -->
@@ -608,24 +626,6 @@
         <p>Loading visits…</p>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- ══ ADMIN SIGN-OUT CODE POPUP ══ -->
-<div id="admin-signout-overlay" class="admin-signout-overlay hidden">
-  <div class="admin-signout-popup">
-    <div class="asc-header">
-      <div class="asc-icon"><i class="ti ti-key"></i></div>
-      <div>
-        <div class="asc-title">Sign-Out Code Request</div>
-        <div class="asc-sub" id="asc-visitor-name"></div>
-      </div>
-      <button class="asc-dismiss" onclick="dismissSignOutCode()"><i class="ti ti-x"></i></button>
-    </div>
-    <div class="asc-detail" id="asc-detail"></div>
-    <div class="asc-code-label">Give this code to the visitor</div>
-    <div class="asc-code" id="asc-code"></div>
-    <div class="asc-expires" id="asc-expires">Valid for 5 minutes</div>
   </div>
 </div>
 

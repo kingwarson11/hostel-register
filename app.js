@@ -304,6 +304,7 @@ function resetSignOutCard() {
   activeEntry       = null;
   currentSignOutPin = null;
   soPinBuffer       = "";
+  clearInterval(countdownTimer);
   const svi = document.getElementById("stored-visit-info");
   if (svi) svi.classList.add("hidden");
   const req = document.getElementById("so-request-step");
@@ -313,7 +314,14 @@ function resetSignOutCard() {
   const err = document.getElementById("so-pin-error");
   if (err) err.classList.add("hidden");
   const btn = document.getElementById("btn-sign-out");
-  if (btn) btn.disabled = true;
+  if (btn) { btn.disabled = true; btn.classList.remove("btn-unlocked"); }
+  const countdown = document.getElementById("so-countdown");
+  if (countdown) countdown.textContent = "";
+  // Always hide admin overlay on visitor side
+  const overlay = document.getElementById("admin-signout-overlay");
+  if (overlay && (!currentUser || !currentUser.isAdmin)) {
+    overlay.classList.add("hidden");
+  }
   updateSoPinDots();
 }
 
@@ -564,8 +572,14 @@ function cancelSignOutCode() {
 }
 
 async function doSignOut() {
-  if (!activeEntry)                          { showToast("No active sign-in found.", "toast-err"); return; }
-  if (soPinBuffer !== currentSignOutPin)     { showToast("Incorrect code.", "toast-err"); return; }
+  if (!activeEntry) {
+    showToast("No active sign-in found. Please sign in first.", "toast-err");
+    return;
+  }
+  if (soPinBuffer !== currentSignOutPin) {
+    showToast("Incorrect code — ask admin for the code", "toast-err");
+    return;
+  }
 
   const now          = new Date();
   activeEntry.status     = "out";
@@ -593,6 +607,7 @@ async function doSignOut() {
 
 // ── Success screen ────────────────────────────────────────────
 function showSuccess(action, vName, rName, room) {
+  signingIn = false; // always reset flag on success
   const isIn = action === "in";
   document.getElementById("success-title").textContent = isIn ? "✓ Signed in!" : "✓ Signed out!";
   document.getElementById("success-msg").textContent   = isIn
@@ -765,12 +780,16 @@ function flashRefresh() {
 // ── Admin sign-out code listener ──────────────────────────────
 function listenForSignOutCodes() {
   if (!firebaseDB) return;
+  // Safety guard — only admins should ever see sign-out codes
+  if (!currentUser || !currentUser.isAdmin) return;
   firebaseDB.ref("signout_codes").on("child_added", snap => {
     const data = snap.val();
     if (!data) return;
-    // Check it hasn't expired
     if (data.expiresAt && Date.now() > data.expiresAt) return;
-    showAdminSignOutPopup(data);
+    // Extra guard — never show popup to non-admin
+    if (currentUser && currentUser.isAdmin) {
+      showAdminSignOutPopup(data);
+    }
   });
 }
 

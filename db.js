@@ -253,11 +253,21 @@ function listenForNewEntries(onNew) {
     });
 }
 
+// Fetch today's entries — for admin dashboard
 async function fetchAllEntries() {
   if (!firebaseDB) return [];
   const today = todayStr();
   const snap = await firebaseDB.ref("entries")
     .orderByChild("date").equalTo(today).once("value");
+  return Object.values(snap.val() || {})
+    .sort((a, b) => new Date(b.timeIn) - new Date(a.timeIn));
+}
+
+// Fetch ALL entries for a visitor across all dates — for sign-in/out state checks
+async function fetchVisitorEntries(email) {
+  if (!firebaseDB) return [];
+  const snap = await firebaseDB.ref("entries")
+    .orderByChild("visitorEmail").equalTo(email).once("value");
   return Object.values(snap.val() || {})
     .sort((a, b) => new Date(b.timeIn) - new Date(a.timeIn));
 }

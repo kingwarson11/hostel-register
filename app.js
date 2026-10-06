@@ -22,7 +22,6 @@ function showToast(msg, type) {
 
 function showAlreadyDone(state) {
   const screen = document.getElementById("success-screen");
-  const form   = document.getElementById("visitor-form");
   const icon   = screen.querySelector(".success-icon i");
   if (state === "in") {
     document.getElementById("success-title").textContent = "Already signed in";
@@ -39,7 +38,7 @@ function showAlreadyDone(state) {
   }
   document.getElementById("success-time").textContent = "";
   screen.classList.remove("hidden");
-  form.classList.add("hidden");
+  document.getElementById("visitor-form")?.classList.add("hidden");
   clearTimeout(screen._t);
 }
 
@@ -326,10 +325,8 @@ function resetSignOutCard() {
 }
 
 async function loadStoredVisitInfo() {
-  const entries = await fetchAllEntries();
-  const open = entries.find(e =>
-    e.visitorEmail === currentUser.email && e.status === "in"
-  );
+  const entries = await fetchVisitorEntries(currentUser.email);
+  const open    = entries.find(e => e.status === "in");
   if (open) {
     showSignOutInfo(open);
     activeEntry = open;
@@ -374,11 +371,9 @@ async function doSignIn() {
   if (!selectedIdType)  { showToast("Please select your ID type", "toast-err"); return; }
   if (!idPhotoBase64)   { showToast("Please upload a photo of your ID", "toast-err"); return; }
 
-  // Block if already signed in (has open entry with status "in")
-  const existing = await fetchAllEntries();
-  const openEntry = existing.find(e =>
-    e.visitorEmail === currentUser.email && e.status === "in"
-  );
+  // Block if already signed in — check ALL dates not just today
+  const existing = await fetchVisitorEntries(currentUser.email);
+  const openEntry = existing.find(e => e.status === "in");
   if (openEntry) {
     signingIn = false;
     // Show info screen — already signed in
@@ -445,12 +440,9 @@ let currentSignOutPin = null;
 let soPinBuffer       = "";
 
 async function requestSignOutCode() {
-  const entries = await fetchAllEntries();
-
   if (!activeEntry) {
-    activeEntry = entries.find(e =>
-      e.visitorEmail === currentUser.email && e.status === "in"
-    );
+    const entries = await fetchVisitorEntries(currentUser.email);
+    activeEntry   = entries.find(e => e.status === "in");
   }
 
   if (!activeEntry) {
@@ -833,8 +825,7 @@ function pushNotif(entry) {
         <div class="np-name">${entry.visitorName}</div>
         <div class="np-detail">→ ${entry.residentName} · Room ${entry.room}${entry.hostel?" · "+entry.hostel:""}</div>
         <div class="np-time">At ${isIn?(entry.timeInStr||fmtTime(entry.timeIn)):(entry.timeOutStr||fmtTime(new Date()))}</div>
-        ${entry.idType?`<div class="np-id"><i class="ti ti-id-badge"></i> ${entry.idType}
-          ${entry.idPhoto?`<button class="id-view-link np-id-link" onclick="viewIdPhoto(event,'${entry.id}')">View ID</button>`:""}</div>`:""}
+        ${entry.idType?`<div class="np-id"><i class="ti ti-id-badge"></i> ${entry.idType} <button class="id-view-link np-id-link" onclick="viewIdPhoto(event,'${entry.id}')">View ID</button></div>`:""}
       </div>
       <button class="np-close" onclick="dismissNotif('${id}')"><i class="ti ti-x"></i></button>
     </div>
@@ -886,9 +877,10 @@ function renderResidentList() {
     return;
   }
 
-  el.innerHTML = list.map(([key, r]) => `
-    <div class="resident-item">
-      <div class="resident-avatar ${r.hostel==='Hostel B'?'res-av-b':'res-av-a'}">${initials(r.name)}</div>
+  el.innerHTML = list.map(([key, r]) => {
+    const safeName = r.name.replace(/'/g, "\'");
+    return `<div class="resident-item">
+      <div class="resident-avatar ${r.hostel==="Hostel B"?"res-av-b":"res-av-a"}">${initials(r.name)}</div>
       <div class="resident-info">
         <div class="resident-name">${r.name}</div>
         <div class="resident-meta">${r.email}</div>
@@ -898,11 +890,12 @@ function renderResidentList() {
         <button class="resident-history-btn" onclick="showResidentHistory('${key}')" title="Visit history">
           <i class="ti ti-history"></i>
         </button>
-        <button class="resident-remove-btn" onclick="adminRemoveResident('${key}','${r.name.replace(/'/g,"\\'")}')">\n          <i class="ti ti-trash"></i>
+        <button class="resident-remove-btn" onclick="adminRemoveResident('${key}','${safeName}')">
+          <i class="ti ti-trash"></i>
         </button>
       </div>
-    </div>
-  `).join("");
+    </div>`;
+  }).join("");
 }
 
 function filterResidentList(q) {
